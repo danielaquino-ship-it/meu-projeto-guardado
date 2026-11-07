@@ -1,993 +1,138 @@
-JavaScript:(function(){
-    'use strict';
-    var d = document;
-    if (d.getElementById('m-ui')) {
-        var p = d.getElementById('m-ui');
-        p.style.display = p.style.display === 'none' ? 'block' : 'none';
-        return;
-    }
-
-    var savedThm = localStorage.getItem('y_hud_theme') || 'black_red';
-    var savedIcn = localStorage.getItem('y_hud_icon') || 'clover';
-    var savedFnt = localStorage.getItem('y_hud_font') || 'cyber';
-    var savedBg = localStorage.getItem('y_hud_c_bg') || '#08060f';
-    var savedBdr = localStorage.getItem('y_hud_c_bdr') || '#dc2626';
-
-    var fontLinks = {
-        cyber: 'https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700&display=swap',
-        old: 'https://fonts.googleapis.com/css2?family=VT323&display=swap',
-        common: 'https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap',
-        signature: 'https://fonts.googleapis.com/css2?family=Caveat:wght@600&display=swap',
-        cloister: 'https://fonts.googleapis.com/css2?family=UnifrakturMaguntia&display=swap'
-    };
-    var fontFamilies = {
-        cyber: "'Orbitron', monospace",
-        old: "'VT323', monospace",
-        common: "'Inter', sans-serif",
-        signature: "'Caveat', cursive",
-        cloister: "'UnifrakturMaguntia', cursive"
-    };
-    var fontSizes = { cyber: '10.5px', old: '15px', common: '12px', signature: '16px', cloister: '14px' };
-    
-    var fL = d.createElement('link');
-    fL.id = 'm-custom-font';
-    fL.rel = 'stylesheet';
-    fL.href = fontLinks[savedFnt] || fontLinks.cyber;
-    d.head.appendChild(fL);
-
-    // BASE DE MOTIVOS (COM AS SUAS CORREÇÕES)
-    var raw = [
-        ["Desconexão Chat", "Inatividade Chat", false, "Reparo Físico", "fez contato e durante o atendimento ficou inativo durante todo o atendimento, resultando no encerramento automático devido à falta de atividade.", "Desconexão Chat"],
-        ["Rota Inoperante", "Rota Inoperante - FTTH", false, "Reparo Físico", "Fez contato para relatar a ausência de acesso. Foi explicado a ele que, naquele momento, a falta de acesso se deve a um rompimento de cabo de fibra que impactou toda a sua rota. Foi fornecido o prazo estimado pela URA para a regularização da situação. O cliente foi informado e está ciente dos detalhes.", "Rota Inoperante - FTTH"],
-        ["Suspeita de LOS", "Suspeita de LOS", true, "Reparo Físico", "Relatou a falta de acesso e a presença de um LED vermelho piscando. Ao questionar a possibilidade de incidentes ou remoção de equipamentos, o cliente negou qualquer ocorrência. Após constatar a normalidade da rota, foi gerada uma Ordem de Serviço (O.S.) para efetuar uma inspeção direta no local. Agendado de acordo com a disponibilidade do cliente.", "los"],
-        ["Transferência", "Solicitação de dados", false, "Reparo Físico", "entrou em contato buscando informações ou um serviço que não se enquadrava na competência deste setor. Não houve necessidade de sondagem. Em vista disso, o cliente foi encaminhado ao setor competente para atender à sua demanda.", "Solicitação de dados"],
-        ["Desconexão Chat - Internet", "Desconexão Chat", false, "Reparo Físico", "cliente fez contato para relatar problema em sua conexão a internet. Durante o atendimento, ele ficou inativo durante todo o atendimento, resultando no encerramento automático devido à falta de atividade.", "Desconexão Chat"],
-        ["Lentidão - Resolvida", "Lentidão - FTTH", false, "Reparo Rápido", "fez contato para relatar lentidão em sua conexão. Após verificar as informações junto ao cliente, constatou-se que o problema ocorria tanto nas proximidades quanto em locais mais distantes do roteador/modem, contudo limitava-se à rede Wi-Fi. Foram executados os procedimentos padrões conforme documentados nos registros de eventos, e solicitados alguns procedimentos manuais usuais. O cliente informou que o acesso foi normalizado.", "Lentidão"],
-        ["Lentidão - Externo", "Lentidão - FTTH", true, "Reparo Rápido", "fez contato para relatar lentidão em sua conexão recorrentemente. Após verificar as informações junto ao cliente, constatou-se que o problema ocorria tanto nas proximidades quanto em locais mais distantes do roteador/modem, contudo limitava-se à rede Wi-Fi. Foram executados os procedimentos padrões conforme documentados nos registros de eventos, e solicitados alguns procedimentos manuais usuais. O cliente informou que a princípio o acesso foi normalizado, mas irá continuar realizando testes ao longo do restante do dia e, caso a instabilidade persista, ele irá entrar em contato conosco para que possamos verificar ou providenciar o envio de uma equipe ao local, se necessário.", "Lentidão"],
-        ["Lentidão - Ficou testando", "Lentidão - FTTH", false, "Reparo Rápido", "Cliente relatou lentidão na conexão. Foram realizados procedimentos de otimização da rede, incluindo reinicialização remota dos equipamentos e verificação do sinal. O cliente permaneceu em teste para avaliar a melhoria no acesso. Caso persista a instabilidade, orientamos entrar em contato novamente para novas verificações.", "Lentidão"],
-        ["Lentidão - Inativo", "Lentidão - FTTH", false, "Reparo Físico", "cliente, entrou em contato informando estar com problemas de lentidão na sua conexão, verificado que o sinal da fibra está normal, perguntei se o problema ocorria em todos os aparelhos, mesmo quando o cliente acessa a rede próximo do roteador, o cliente informou que sim, então foi alterado o canal, ativado roteador e reiniciado manualmente os equipamentos, cliente ficou inativo chamado será encerrado.", "Lentidão"],
-        ["Lentidão - Recorrente", "Lentidão - FTTH", true, "Reparo Rápido", "informa estar enfrentando lentidão. Após verificação, observa-se que o problema afeta todos os dispositivos e se restringe à rede sem fio. Eu menciono a intenção de atualizar a rede, no entanto, o cliente destaca que essa questão é recorrente e deseja que uma equipe externa conduza uma análise, uma vez que já havia contatado previamente sem sucesso. Diante da insatisfação do cliente e da constatação de que se trata de uma situação frequente ainda não atendida localmente, uma Ordem de Serviço (O.S.) vai ser aberta para resolver o problema e garantir a retenção do cliente. Agendado de acordo com a disponibilidade do cliente.", "Lentidão"],
-        ["Rede sumiu", "Instabilidade TP-LINK", false, "Reparo Rápido", "relatou que estava sem conexão com a internet e que o nome da rede Wi-Fi não estava aparecendo. Após realizar algumas alterações na configuração da rede, a conexão foi restabelecida com o nome e senha originais. O usuário confirmou que a internet voltou a funcionar corretamente.", "Instabilidade TP-LINK"],
-        ["Sem gerencia - Resolvido", "Sem acesso TP-LINK", false, "Reparo Rápido", "fez contato para comunicar a ausência de acesso. Foi verificado que a ONU apresentava sinal e o roteador não estava gerenciando a conexão. Após verificar a conexão do cabo, orientou-se o cliente a reiniciar o roteador TP-link. Paralelamente, foi efetuada uma reconfiguração remota. Com base na realização desses passos, foi possível restabelecer o acesso.", "Sem acesso TP-LINK"],
-        ["Sem gerencia - Externo", "Sem acesso TP-LINK", true, "Reparo Rápido", "fez contato para comunicar a ausência de acesso. Foi verificado que a ONU apresentava sinal e o roteador não estava gerenciando a conexão. Após verificar a conexão do cabo, orientou-se o cliente a reiniciar o roteador TP-link. Paralelamente, foi efetuada uma reconfiguração remota. Mesmo após a realização desses passos, não foi possível restabelecer o acesso, dessa forma foi gerada uma Ordem de Serviço (O.S.) para efetuar uma inspeção direta no local. Agendado de acordo com a disponibilidade do cliente.", "Sem acesso TP-LINK"],
-        ["PON Piscando - Resolvido", "PON piscando - FTTH", false, "Reparo Físico", "Relata que está enfrentando uma interrupção na sua conexão com a internet. Após indagar sobre a situação do LED PON, o cliente confirma que ele está piscando. Ao constatar que a rota está operante, foram executados os procedimentos padrões conforme documentados nos registros de eventos. Após a execução dessas ações, a conectividade foi restabelecida com êxito.", "PON Piscando"],
-        ["PON Piscando - Externo", "PON piscando - FTTH", true, "Reparo Físico", "Relata que está enfrentando uma interrupção na sua conexão com a internet. Após questionar sobre a situação do LED PON, o cliente confirma que ele está piscando. Ao constatar que a rota está operante, foram executados os procedimentos padrões conforme documentados nos registros de eventos. O cliente informou que o acesso continua interrompido, desta forma foi gerada uma Ordem de Serviço (O.S.) para efetuar uma inspeção direta no local. Agendado de acordo com a disponibilidade do cliente.", "PON Piscando"],
-        ["PON Apagada - Resolvido", "PON Apagada", false, "Reparo Rápido", "Entrou em contato informando que os serviços da Brisanet estão sem sinal. Ao ser questionado sobre a ativação da LED PON e a ocorrência de acidentes ou remoção de equipamento, o cliente negou qualquer incidente. Após verificar que a rota está normal, procedeu-se à reconfiguração e reinicialização do modem ONU, além de conectá-lo em outra tomada de energia. O cliente reportou que o acesso foi normalizado.", "PON apagada - FTTH"],
-        ["PON Apagada - Externo", "PON apagada - FTTH", true, "Reparo Rápido", "Entrou em contato relatando uma interrupção em sua conexão com a internet. Após questionar sobre a situação do LED PON, o cliente confirmou que ele está apagado. Ao constatar que a rota está operante, seguimos os procedimentos padrões conforme documentados nos registros de eventos. Adicionalmente, conectamos o equipamento em outra tomada de energia e verificamos o botão 'ON/OFF'. No entanto, o cliente informou que o acesso continua interrompido. Diante dessa situação, foi gerada uma Ordem de Serviço (O.S.) para efetuar uma inspeção direta no local e resolver o problema. Agendado de acordo com a disponibilidade do cliente.", "PON Apagada"],
-        ["Fibra Rompida", "Cabo da fibra rompido", true, "Reparo Físico", "Relata que algo rompeu o cabo de fibra fora de sua residência. Não foi necessário realizar alguma sondagem. Foi aberta uma ordem de serviço para resolução do problema e a visita técnica agendada para de acordo com a disponibilidade do cliente.", "Cabo da fibra rompido"],
-        ["Fibra Baixa", "Cabo de fibra baixo/remanejamento - FTTH", true, "Serviço Adicional", "Relata sobre um cabo de fibra solto fora de sua residência, foi aberta uma Ordem de Serviço (OS) para verificação. Agendado de acordo com a disponibilidade do cliente.", "Cabo de fibra baixo/remanejamento"],
-        ["Fibra Ressecada", "Troca de cabo fibra - FTTH", true, "Reparo Físico", "Relata que o cabo de fibra está ressecado em sua residência, onde ninguém mexeu. O cabo corre o risco de ser roto. Foi aberta uma ordem de serviço para verificar o problema. Agendado de acordo com a disponibilidade do cliente.", "Cabo da fibra rompido"],
-        ["Remanejamento de Fibra", "Cabo de fibra baixo/remanejamento - FTTH", true, "Serviço Adicional", "Relata sobre a necessidade do remanejamento do cabo de fibra, pois, está passando sobre propriedades alheias. Agendado de acordo com a disponibilidade do cliente.", "Cabo de fibra baixo/remanejamento"],
-        ["Quedas na conexão - Resolvido", "Quedas na conexão - FTTH", false, "Reparo Rápido", "fez contato para relatar quedas de acesso em sua conexão. Após verificar as informações junto ao cliente, constatou-se que o problema ocorria tanto nas proximidades quanto em locais mais distantes do roteador/modem, contudo limitava-se à rede Wi-Fi. Foram executados os procedimentos padrões conforme documentados nos registros de eventos, e solicitados alguns procedimentos manuais usuais. O cliente informou que o acesso foi normalizado.", "Instabilidade na rede WI-FI"],
-        ["Quedas na conexão - Externo", "Quedas na conexão - FTTH", true, "Reparo Rápido", "fez contato para relatar quedas de acesso em sua conexão recorrentemente. Após verificar as informações junto ao cliente, constatou-se que o problema ocorria tanto nas proximidades quanto em locais mais distantes do roteador/modem, contudo limitava-se à rede Wi-Fi. Foram executados os procedimentos padrões conforme documentados nos registros de eventos, e solicitados alguns procedimentos manuais usuais. O cliente informou que a princípio o acesso foi normalizado, mas irá continuar realizando testes ao longo do restante do dia e, caso a instabilidade persista, ele irá entrar em contato conosco para que possamos verificar ou providenciar o envio de uma equipe ao local, se necessário.", "Instabilidade TP-LINK"],
-        ["Quedas de conexão - Ficou testando", "Quedas na conexão - FTTH", false, "Reparo Rápido", "fez contato para relatar quedas de acesso em sua conexão. Após verificar as informações junto ao cliente, constatou-se que o problema ocorria tanto nas proximidades quanto em locais mais distantes do roteador/modem, contudo limitava-se à rede Wi-Fi. Foram executados os procedimentos padrões conforme documentados nos registros de eventos, e solicitados alguns procedimentos manuais usuais. O cliente informou que o acesso continua instável, desta forma foi gerada uma Ordem de Serviço (O.S.) para efetuar uma inspeção direta no local. Agendado de acordo com a disponibilidade do cliente.", "Quedas de conexão - FTTH"],
-        ["Sem acesso com sinal - Resolvido", "sem Acesso", false, "Reparo Rápido", "fez contato para comunicar a ausência de acesso. Foi verificado que a ONU apresentava sinal e o roteador não estava gerenciando a conexão. Após verificar a conexão do cabo, orientou-se o cliente a reiniciar o roteador TP-link. Paralelamente, foi efetuada uma reconfiguração remota. Com base na realização desses passos, foi possível restabelecer o acesso.", "sem Acesso"],
-        ["Sem acesso com sinal - Externo", "sem Acesso", true, "Reparo Rápido", "fez contato para comunicar a ausência de acesso. Foi verificado que a ONU apresentava sinal e o roteador não estava gerenciando a conexão. Após verificar a conexão do cabo, orientou-se o cliente a reiniciar o roteador TP-link. Paralelamente, foi efetuada uma reconfiguração remota. Mesmo após a realização desses passos, não foi possível restabelecer o acesso, dessa forma foi gerada uma Ordem de Serviço (O.S.) para efetuar uma inspeção direta no local. Agendado de acordo com a disponibilidade do cliente.", "sem Acesso"],
-        ["Sinal irregular - externo", "Sinal da fibra do cliente irregular - FTTH", true, "Reparo Físico", "relata sobre falta de acesso à internet, foi constatada irregularidade no sinal da PON. A rota foi verificada e estava dentro dos padrões. Questionado sobre possíveis incidentes ou remoção de equipamentos, o cliente negou qualquer ocorrência. Diante disso, foi gerada uma Ordem de Serviço (OS) para inspeção presencial no local, a ser agendada conforme disponibilidade do cliente.", "Sinal irregular Fibra"],
-        ["Senha da rede wi-fi incorreta", "Alterações nas configurações do Wi-Fi - FTTH", false, "Reparo Físico", "relata que está sem acesso à internet. Verificamos que a rede Wi-Fi do cliente não conecta, com a mensagem de erro de autenticação. A falha na autenticação pode ter sido causada por uma senha incorreta ou por um problema no roteador. Geramos uma nova senha para o cliente e o acesso foi normalizado.", "Alterações nas configurações do Wi-Fi - FTTH"],
-        ["Alteração de senha - Resolvido", "Alterações nas configurações do Wi-Fi - FTTH", false, "Reparo Físico", "solicitou a alteração da senha da rede Wi-Fi. Foi explicado que a senha é gerada aleatoriamente e composta por caracteres minúsculos. Senha gerada e cliente com acesso", "Alterações nas configurações do Wi-Fi - FTTH"],
-        ["Alteração de senha - Inativo", "Alterações nas configurações do Wi-Fi - FTTH", false, "Reparo Físico", "solicitou a alteração da senha da rede Wi-Fi. Foi explicado que a senha é gerada aleatoriamente e composta por caracteres minúsculos. Senha gerada, porém, o cliente ficou sem interagir até o encerramento do atendimento.", "Alterações nas configurações do Wi-Fi - FTTH"],
-        ["Plano no cabo - Resolvido", "Plano não chega o contratado - FTTH", false, "Reparo Rápido", "informou estar enfrentando problemas de instabilidade, pois a velocidade do plano contratado não está sendo alcançada na rede cabeada. Verificado o sinal óptico na sua PON está dentro dos padrões. Procedemos à execução dos procedimentos padrões, conforme documentados nos registros de eventos, e solicitamos alguns procedimentos manuais usuais, incluindo o reinício do computador. Além disso, verificamos a placa de rede é Gigabyte e o cabo de rede é CAT. 5E. Após essas verificações, realizamos um teste adicional no velocímetro, e agora a velocidade atingiu o contratado.", "Plano não chega o contratado - FTTH"],
-        ["Plano no cabo - Externo", "Plano não chega o contratado - FTTH", true, "Reparo Rápido", "informou estar enfrentando problemas de instabilidade, já que a velocidade do plano contratado não está sendo alcançada na rede cabeada. Verificado o sinal óptico de sua PON está dentro dos padrões. Executamos os procedimentos padrões, conforme documentados nos registros de eventos, e solicitamos alguns procedimentos manuais usuais, incluindo o reinício do computador. Além disso, constatamos que a placa de rede é Gigabyte e o cabo de rede é CAT. 5E. Apesar dessas verificações, o teste adicional no velocímetro ainda indicou uma velocidade inferior à garantida. Diante disso, foi gerada uma Ordem de Serviço (O.S.) para efetuar uma inspeção direta no local. Agendado de acordo com a disponibilidade do cliente.", "Plano não chega o contratado"],
-        ["Plano no cabo - Ficou testando", "Plano não chega o contratado - FTTH", false, "Reparo Rápido", "informou estar enfrentando problemas de instabilidade, pois a velocidade do plano contratado não está sendo alcançada na rede cabeada. Verificado o sinal óptico na sua PON está dentro dos padrões. Procedemos à execução dos procedimentos padrões, conforme documentados nos registros de eventos, e solicitamos alguns procedimentos manuais usuais, incluindo o reinício do computador. Além disso, verificamos a placa de rede é Gigabyte e o cabo de rede é CAT. 5E. Após essas verificações, realizamos um teste adicional no velocímetro, e agora a velocidade atingiu o contratado, porém, voltou a abaixar. Devido isso, o cliente ficou de continuar testando durante o restante do dia e caso continue persistido, irá entrar em contato para enviarmos uma equipe para analisar.", "Plano não chega o contratado - FTTH"],
-        ["Plano no wi-fi - Ficou testando", "Plano não chega o contratado - FTTH", false, "Reparo Rápido", "relatou estar enfrentando problemas de instabilidade, pois a velocidade do plano contratado não está sendo alcançada na rede sem fio. Verificamos que o sinal óptico de sua PON estava dentro dos padrões. Nesse contexto, explicamos sobre a garantia de entrega de velocidade apenas na rede cabeada e oferecemos um procedimento remoto para tentar melhorar, embora não pudéssemos garantir o mesmo desempenho na rede sem fio. Procedemos à execução dos procedimentos padrões, conforme documentados nos registros de eventos, e solicitamos alguns procedimentos manuais usuais, incluindo o reinício do aparelho usado para testar. Apesar dessas verificações, o teste no velocímetro ainda indicou uma velocidade inferior à garantida. Diante dessa situação, o cliente ficou de realizar o teste no cabo quando puder.", "Plano não chega o contratado - FTTH"],
-        ["Plano no wi-fi - externo", "Plano não chega o contratado - FTTH", true, "Reparo Rápido", "relatou enfrentar problemas de instabilidade, pois a velocidade do plano contratado não está sendo alcançada na rede sem fio. Verificado o sinal óptico de sua PON estava dentro dos padrões. Nesse contexto, explicamos sobre a garantia de entrega de velocidade apenas na rede cabeada e oferecemos um procedimento remoto para tentar melhorar, embora não pudéssemos garantir o mesmo desempenho na rede sem fio. Procedemos à execução dos procedimentos padrões, conforme documentados nos registros de eventos, e solicitamos alguns procedimentos manuais usuais, incluindo o reinício do aparelho usado para testar. Apesar dessas verificações, o teste no velocímetro ainda indicou uma velocidade inferior à garantida. Diante dessa situação, o cliente solicitou a presença de uma equipe no local, com um notebook e cabo de rede da Brisanet para uma inspeção direta e comprovação da entrega do plano. Foi gerada uma Ordem de Serviço (O.S.) para efetuar essa inspeção. Agendado de acordo com a disponibilidade do cliente.", "Plano não chega o contratado"],
-        ["Placa de rede FE", "Plano não chega o contratado - FTTH", false, "Reparo Rápido", "relatou estar enfrentando problemas de instabilidade, pois a velocidade do plano contratado não está sendo alcançada na rede cabeada. Após verificar que o sinal óptico na sua PON está dentro dos padrões, procedemos à execução dos procedimentos padrões, conforme documentados nos registros de eventos, e solicitamos alguns procedimentos manuais usuais, incluindo o reinício do computador. Após essas verificações, realizamos um teste adicional no velocímetro; no entanto, a velocidade continuou na mesma média de 90 Mbps. Verificamos que o cabo de rede é CAT. 5E e, ao examinar a placa de rede, identificamos que o problema está sendo ocasionado pela placa de rede FE (/100). O cliente está ciente dessa situação.", "Plano não chega o contratado - FTTH"],
-        ["Placa de rede FE - externo", "Plano não chega o contratado - FTTH", true, "Reparo Rápido", "relatou enfrentar problemas de instabilidade, pois a velocidade do plano contratado não está sendo alcançada na rede cabeada. Após verificar que o sinal óptico na sua PON está dentro dos padrões, realizamos os procedimentos padrão, conforme documentados nos registros de eventos, e recomendamos alguns procedimentos manuais usuais, incluindo o reinício do computador. Após essas verificações, realizamos um teste adicional no velocímetro; no entanto, a velocidade continuou na mesma média de 90 Mbps. Verificamos que o cabo de rede é CAT. 5E e, ao examinar a placa de rede, identificamos que o problema está sendo ocasionado pela placa de rede FE (/100). O cliente está ciente dessa situação, mas deseja a visita de uma equipe para confirmar que está recebendo o serviço contratado. Diante disso, geramos uma Ordem de Serviço (O.S.) para realizar uma inspeção presencial no local. Agendado de acordo com a disponibilidade do cliente.", "Plano não chega o contratado"],
-        ["Rota com sinal irregular", "Rota com sinal irregular - FTTH", false, "Reparo Físico", "relata interrupção do serviço de acesso à internet. Após análise, constatou-se anomalia no sinal da PON. A rota foi verificada e apresenta falhas. O cliente foi informado sobre o prazo de 24 horas para a resolução do problema, que está relacionado à rota.", "Rota com sinal irregular - FTTH"],
-        ["Transfêrencia para o setor cancelamento", "Informação cancelamento", false, "Reparo Físico", "transferido para o setor de cancelamento. O cliente solicitou o cancelamento do serviço da brisanet e recusou qualquer tipo de tratativa.", "Informação cancelamento"],
-        ["Instalação Mal Sucedida", "Instalação mal sucedida (sem acesso) - 7d", true, "Reclamação de instalação de serviço", "Instalação recente com pendência de sinal/alinhamento. Aberta prioridade para retorno técnico.", "Instalação mal sucedida (sem acesso) - 7d"],
-        ["Desconexão Chat - Telefone fixo", "Desconexão Chat", false, "Reparo Físico", "fez contato para relatar problema em seu telefone fixo. Durante o atendimento, ele ficou inativo durante todo o atendimento, resultando no encerramento automático devido à falta de atividade.", "Desconexão Chat"],
-        ["Desconexão Chat - BrisaTV", "Desconexão Chat", false, "Reparo Físico", "fez contato para relatar problema em seu serviço de TV. Durante o atendimento, ele ficou inativo durante todo o atendimento, resultando no encerramento automático devido à falta de atividade.", "Desconexão Chat"],
-        ["Não está no local", "Instabilidade na entrega do serviço", false, "Reparo Físico", "entra em contato informando problema nos serviços da Brisanet, porém, durante a sondagem foi verificado que o mesmo não está na residência para verificar ou testar o serviço. O mesmo ficou de entrar em contato quando estiver no local.", "Instabilidade na entrega do serviço"],
-        ["Já solucionado", "Informações do serviço", false, "Reparo Físico", "comunica que no início do atendimento a questão já foi solucionada, tornando desnecessária a continuação do suporte.", "Informações do serviço"],
-        ["Falta de cordialidade", "Instabilidade na entrega do serviço", false, "Reparo Físico", "reporta um problema nos serviços da brisanet. Entretanto, durante o atendimento, houve o uso de linguagem inadequada, o que me levou a encerrar a conversa.", "Instabilidade na entrega do serviço"],
-        ["Em horário de expediente", "Instabilidade na entrega do serviço", false, "Reparo Físico", "entra em contato informando problema nos serviços da Brisanet, porém, durante a sondagem foi verificado que o mesmo está em horário de expediente, e por isso não podemos realizar a tratativa do problema. O mesmo ficou de entrar em contato quando estiver disponível.", "Instabilidade na entrega do serviço"],
-        ["Urgência de última hora", "Instabilidade na entrega do serviço", false, "Reparo Físico", "comunica dificuldades com o serviço da brisanet. Durante a verificação, constatou-se que o cliente não estava em disponível para dar continuidade ao processo. Ele entrará em contato quando estiver disponível.", "Cabo da fibra rompido"],
-        ["Solicitação de cancelamento", "Solicitação de cancelamento", false, "Reparo Físico", "entrou em contato solicitando o cancelamento dos serviços Brisanet. Cliente ciente que o nosso setor de retenção entrará em contato com a mesma.", "Solicitação de cancelamento"],
-        ["Procedimento somente com o titular", "Atendimento encerrado - Não é o titular", false, "Reparo Físico", "solicita atendimento que envolve negociação/alteração de dados do cadastro, Por questões de segurança dos dados pessoais do titular, informamos que só podemos proceder após conversar diretamente com o titular do contrato.", "Atendimento encerrado - Não é o titular"],
-        ["Comando CRM", "Sem acesso", false, "Reparo Rápido", "Relata que está sem acesso à internet. Verificamos o comando CRM no sistema e reforçamos o prazo de 24 horas para a resolução do problema. Ressaltamos que se trata do comando de ativação do serviço.", "Sem acesso"],
-        ["Ping na rede cabeada - Resolvido", "Ping alto", false, "Reparo Físico", "relatou problemas com alta latência (ping) ao jogar, mesmo utilizando uma conexão cabeada. Após confirmar as informações do titular, foi feita uma reconfiguração da rede e o cliente foi orientado a reiniciar o roteador. A latência foi reduzida para 60 ms, ficando dentro da garantia da brisanet.", "Cabo da fibra rompido"],
-        ["Ping na rede cabeada - Ficou testando", "Ping alto", false, "Reparo Rápido", "relatou problemas com alta latência (ping) ao jogar, mesmo utilizando uma conexão cabeada. Após confirmar as informações do titular, foi feita uma reconfiguração da rede e o cliente foi orientado a reiniciar o roteador. A latência foi reduzida para 60 ms, ficando dentro da garantia da brisanet. O cliente foi instruído a monitorar o desempenho ao longo do dia e a entrar em contato novamente se o problema persistir, para que uma equipe técnica especializada possa ser enviada.", "Ping alto"],
-        ["Ausência de confirmação da ID positiva", "Ausência de confirmação de dados", false, "Reparo Físico", "não procedeu com a confirmação dos dados correspondentes ao titular durante o decorrer do atendimento. Em razão da segurança do titular, o atendimento foi encerrado. Foi feita a requisição dos dados em três ocasiões.", "Ausência de confirmação de dados"],
-        ["Cobrança de cancelamento", "Informação cancelamento", false, "Reparo Físico", "entrou em contato para cobrar um retorno em relação à sua solicitação de cancelamento. Ele forneceu o número de contato, e o prazo para o retorno foi devidamente comunicado. Ainda, foi esclarecido que ele pode encurtar o processo ao se dirigir diretamente ao setor competente por meio do número 0800 281 3017.", "Informação cancelamento"],
-        ["Valores do cancelamento", "Informação cancelamento", false, "Reparo Físico", "busca informações sobre os valores do contrato de fidelização em caso de cancelamento. Identificamos um erro no sistema que impede a obtenção dessas informações. Encaminhamos o contato para o setor de retenção, capacitado para fornecer as informações desejadas.", "Informação cancelamento"],
-        ["Manutenção no Revan", "Sistema interno indisponível", false, "Reparo Físico", "fez contato, porém, foi explicado a ele que, naquele momento, o nosso sistema interno estava em manutenção e devido a isso, não tínhamos como fazer nenhum procedimento remoto, sendo necessário aguardar. Foi fornecido o prazo estimado pela URA para a regularização da situação. O cliente foi informado e está ciente dos detalhes.", "Sistema interno indisponível"],
-        ["Desconto por Rota Inoperante", "Desconto de rota inoperante", false, "Reparo Físico", "Entra em contato para solicitar desconto referente ao tempo que ficou sem acesso. Foi repassado que o desconto é fornecido somente pelo nosso setor financeiro, que pode ser contactado por ligação no número 0800 281 3017.", "Informações do serviço"],
-        ["Instabilidade geral em TP-links", "Instabilidade TP-Link", false, "Reparo Rápido", "entra em contato informando instabilidade em seu roteador da TP-link. Verificado um problema geral onde não é possivel realizar nenhuma tratatativa em roteadores da marca TP-link. Repassado prazo conforme a URA.", "Instabilidade TP-Link"],
-        ["Problema geral na cidade", "Instabilidade na entrega do serviço", false, "Reparo Físico", "relata instabilidade nos serviços da brisanet, devido a um problema geral na cidade do cliente, não foi possível realizar uma verificação completa no momento. Cliente foi orientado a entrar em contato novamente quando o acesso estiver normalizado. Cliente ciente e de acordo.", "Instabilidade na entrega do serviço"],
-        ["OLT em Manutenção", "Problema na OLT", false, "Reparo Físico", "Entrou em contato relatando falta de internet. Foi informado que há uma manutenção em andamento na OLT que afeta o sinal do cliente e de vários outros clientes. Foi repassado o prazo máximo de normalização conforme a URA, porém o serviço pode voltar a qualquer momento. Cliente foi orientado a entrar em contato com o setor financeiro para solicitar desconto referente ao tempo sem acesso após a normalização. Cliente ciente e de acordo.", "Informações do serviço"],
-        ["Problema em roteador particular - Técnico particular", "Suporte a equipamento particular", false, "Serviço Adicional", "relatou problemas com seu roteador particular, que estava sem acesso à internet. Após a verificação, foi constatado que o roteador da Brisanet estava funcionando normalmente, mas o roteador específico continuava sem conexão. Foi recomendado que o cliente reinicie o roteador particular, logo após ser reconfigurado os equipamentos da brisanet. Como o acesso não retornou, foi recomendado que verifique as configurações, conexões de cabos e possíveis interferências. Caso o problema persista, foi sugerido entrar em contato com o suporte técnico do roteador para assistência personalizada.", "Suporte a equipamento particular"],
-        ["BrisaCliente - Primeiro acesso", "BrisaCliente", false, "Reparo Rápido", "está buscando assistência para acessar o aplicativo BrisaCliente. Foi fornecido um guia com todos os passos", "BrisaCliente"],
-        ["BrisaCliente - Primeiro acesso escritorio", "BrisaCliente", false, "Reparo Rápido", "entrou em contato relatando que não estava recebendo o SMS de confirmação para realizar o primeiro acesso ao aplicativo BrisaCliente. Foi solicitado um número que pudesse receber SMS, mas o problema persistiu. Diante da falta de outro número disponível com o mesmo DDD, foi informado que seria necessário visitar uma loja ou escritório da empresa para que a configuração fosse realizada.", "BrisaCliente"],
-        ["BrisaCliente - Recuperar a senha", "BrisaCliente", false, "Reparo Rápido", "pediu ajuda para recuperar a senha do aplicativo BrisaCliente. Enviamos um passo a passo para guiá-lo durante o processo de recuperação.", "BrisaCliente"],
-        ["Globoplay - Primeiro acesso", "Globoplay", false, "Reparo Rápido", "está buscando assistência para acessar o aplicativo Globoplay. Foi fornecido um guia com todos os passos", "Globoplay"],
-        ["Globoplay - Suporte do serviço", "Globoplay", false, "Reparo Rápido", "entrou em contato relatando um problema com o aplicativo GloboPlay na TV, mencionando que uma série que estava assistindo não carregava há duas semanas. Após realizar uma reconfiguração da rede e confirmar que a conexão estava funcionando corretamente, foi identificado que o problema estava no próprio aplicativo da GloboPlay. O cliente foi orientado a entrar em contato com o suporte da GloboPlay através dos números 0800 881 8000 ou 4003 8000 para resolver o problema.", "Globoplay"],
-        ["Netflix - Primeiro acesso", "Netflix", false, "Reparo Rápido", "está buscando assistência para acessar o aplicativo Netflix. Foi fornecido um guia com todos os passos", "Netflix"],
-        ["PON Piscando - GPON", "PON piscando - FTTH", false, "Reparo Físico", "Entra em contato informando que está sem acesso, verificado que o LED PON está piscando, dessa forma foi reconfigurado a ONU e o problema persistiu. Foi tentado mais uma vez e o problema ainda persiste. O problema foi repassado pela liderança para o GPON verificar. Prazo de 24 horas. Cliente ciente do retorno.", "PON Piscando"],
-        ["Alteração de cômodo", "Alteração de cômodo", true, "Serviço Adicional", "fica ciente do prazo, há questões de valores: R$ 30,00 pela alteração; no caso de utilização de novo cabo FTTH/RJ45, são mais R$1,30 por metro utilizado. Confirmado CPF e endereço. PS: levar termo de compromisso para ser assinado pelo cliente ou responsável. E anexar imagem ao chamado, também como do lugar onde ficou o equipamento.", "Alteração de cômodo"],
-        ["Revisão de equipamento", "Revisão de Equipamento", true, "Reparo Rápido", "entrou em contato via Whatsapp informando estar com instabilidade e problemas de conexão. Informado ao cliente sobre as instabilidades da rede WI-FI, sobre o alcance da rede WI-FI e testes via WI-FI. Canais foram alterados, sinal e IP normal, ONU Ativada/reconfigurada. O Cliente informa que a sua conexão não melhorou, por gentileza, passar, verificar se existe algum problema lógico na ONU do cliente, caso seja constatado, por gentileza, entrar em contato com o suporte regional e realizar a troca da ONU, se autorizado, por outra de mesmo modelo a fim de verificar melhorias na conexão e reforçar também as informações supracitadas. PS. Caso alguma informação sobre serviço adicional (troca de ONU, cabo de rede, alteração de parede ou cômodo) for informada ao cliente, por gentileza, registrar no chamado.", "Revisão de Equipamento"],
-        ["Configuração Estruturada de Rede Interna", "Configuração Estruturada de Rede Interna", true, "Serviço Adicional", "Entrou em contato solicitando a visita de um técnico para configurar e instalar um aparelho particular na sua residência, dessa forma foi aberto uma O.S. Por gentileza, passar no local realizar a configuração da sua rede interna, o cliente está ciente que o tal procedimento é gerado uma taxa de R$ 90,00 reais, podendo ser dividido em até 3X. onde o cliente tem direito a 20 metros de cabo de rede, caso seja utilizado metragem de cabos superior a 20 metros será cobrado mais R$ 1,30 por metro. CPF confirmado. Cliente ciente do prazo e no aguardo.", "Configuração Estruturada de Rede Interna"],
-        ["Hibernação chat", "Hibernação chat", false, "Reparo Físico", "O cliente permaneceu inativo por 10 minutos, mesmo após o envio de alertas de hibernação. Diante da continuidade da inatividade, o mesmo foi realocado para a fila de hibernação.", "Serviço Adicional"],
-        ["Area interditada sem retorno", "Rota Inoperante", false, "Reparo Físico", "O cliente relatou indisponibilidade do serviço de internet há quatro dias. Foi verificado em sistema que a região do cliente está classificada como área de risco, o que impede a realização de manutenções pela operadora no momento. O atendimento foi finalizado após o esclarecimento sobre as restrições operacionais na área.", "Serviço Adicional"],
-        ["Função - WPS", "Informação Técnica", false, "Reparo Físico", "entrou em contato solicitando conexão via WPS em sua impressora, foi informado que a função é bloqueada de fábrica nos equipamentos da brisanet, o cliente ficou ciente de que só é possível utilizar essa função em um roteador particular.", "Informação Técnica"],
-        ["Torre inoperante - FWA", "Torre inoperante - FWA", false, "Reparo Físico", "Cliente entrou em contato informando falta de acesso à internet. Verificado em sistema e constatado que a torre está fora do ar. Foi informado ao cliente o prazo de 12 horas para normalização. Cliente ciente e aguarda retorno.", "Serviço Adicional"],
-        ["LENTIDÃO - Resolvido FWA", "Lentidão - FWA", false, "Reparo Físico", "Cliente relatou lentidão no FWA durante o uso. Após a verificação inicial, foram realizados os procedimentos informados no treinamento, incluindo ajustes no equipamento e testes de conectividade. Com isso, foi possível restabelecer o acesso, e a lentidão foi resolvida. O cliente confirmou que o serviço voltou a operar normalmente, sem mais sinais de instabilidade.", "Serviço Adicional"],
-        ["CPE sem sinal - FWA", "CPE sem sinal - FWA", true, "Reparo Físico", "Informou estar sem acesso. Verificado equipamento(s) ligado(s) e led vermelho piscando; cliente informou que ninguém mexeu no(s) equipamento(s). Verificado na planilha de acompanhamento 5G. Aberto O.S para verificação no local.", "CPE sem sinal - FWA"],
-        ["LED 5G - APAGADO - Resolvido (FWA)", "CPE sem sinal - FWA", false, "Reparo Físico", "entrou em contato informando que o LED 5G estava apagado. Foi verificado que o problema estava relacionado ao cartão SIM não conectado. O cliente foi orientado a verificar se o chip estava corretamente inserido e reiniciar o aparelho. Após seguir as instruções, o acesso foi normalizado e o LED 5G acendeu.", "CPE sem sinal - FWA"],
-        ["LED 5G - APAGADO - Aguarda o prazo (FWA)", "CPE sem sinal - FWA", false, "Reparo Físico", "relatou que o LED 5G estava apagado. Ao verificar a conexão do cartão SIM e reiniciar o aparelho, o problema persistiu. Foi consultada a liderança e identificado que o problema está relacionado ao rádio. Foi repassado o prazo para normalização do serviço e o cliente foi informado sobre a previsão de resolução.", "CPE sem sinal - FWA"],
-        ["LED 5G - APAGADO - Externo (FWA)", "CPE sem sinal - FWA", true, "Reparo Físico", "informou que o LED 5G estava apagado. Verificado que o cartão SIM estava conectado e o aparelho foi reiniciado, mas o problema persistiu. Após verificar que o sistema estava normal e o problema continuava, foi aberta uma Ordem de Serviço para verificação no local. Será realizado contato com o cliente para agendamento da visita técnica.", "CPE sem sinal - FWA"],
-        ["LED 5G - Pis Vermelho - Resolvio (FWA)", "CPE sem sinal - FWA", false, "Reparo Físico", "informou que o LED estava piscando vermelho, indicando ausência de rede. Foi confirmado com a liderança que o status do servidor estava normal (up). Após verificar a situação e realizar os procedimentos necessários, o problema foi resolvido e a conexão foi restabelecida.", "CPE sem sinal - FWA"],
-        ["LED 5G - Pis Vermelho - Externo (FWA)", "CPE sem sinal - FWA", true, "Reparo Físico", "relatou que o LED estava piscando vermelho, sinalizando falta de rede. Confirmado com a liderança que o status do servidor estava normal (up). Como o problema persistiu após a verificação interna, foi aberto um chamado externo para a solução do problema. Cliente ciente do chamado e aguarda resolução.", "CPE sem sinal - FWA"],
-        ["LENTIDÃO - Resolvido (FWA)", "Lentidão - FWA", false, "Reparo Físico", "relatou lentidão no FWA durante o uso. Após a verificação inicial, foram realizados os procedimentos informados no treinamento, incluindo ajustes no equipamento e testes de conectividade. Com isso, foi possível restabelecer o acesso, e a lentidão foi resolvida. O cliente confirmou que o serviço voltou a operar normalmente, sem mais sinais de instabilidade.", "Lentidão - FWA"],
-        ["Lentidão - Externo (FWA)", "Lentidão - FWA", true, "Reparo Físico", "relatou problema de conectividade no FWA. Após verificação detalhada no sistema, constatou-se que o problema está relacionado à conexão externa, fora do controle local. O cliente foi informado que, no momento, não é possível realizar intervenções internas e que a questão envolve apenas a infraestrutura externa. Aguardando ações necessárias pela equipe responsável por essa área.", "Lentidão - FWA"],
-        ["Personalização de rede - Nome e Senha (FWA)", "Alterações nas configurações do Wi-Fi - FWA", false, "Reparo Físico", "entrou em contato solicitando a personalização do nome da rede e da senha do WIFI FWA. As configurações foram ajustadas conforme solicitado. O cliente foi informado sobre a alteração e confirmou que a conexão está funcionando corretamente.", "Alterações nas configurações do Wi-Fi - FWA"],
-        ["Personalização de rede - Nome (FWA)", "Alterações nas configurações do Wi-Fi - FWA", false, "Reparo Físico", "solicitou a personalização apenas do nome da rede WIFI FWA. O ajuste foi realizado conforme a solicitação, e o cliente foi informado sobre a mudança. Após verificar a conexão, o cliente confirmou que está tudo OK e que a rede está funcionando perfeitamente.", "Alterações nas configurações do Wi-Fi - FWA"],
-        ["Personalização de rede - Senha (FWA)", "Alterações nas configurações do Wi-Fi - FWA", false, "Reparo Físico", "entrou em contato solicitando a personalização do nome da rede e da senha do WIFI FWA. As configurações foram ajustadas conforme solicitado. O cliente foi informado sobre a alteração e confirmou que a conexão está funcionando corretamente.", "Alterações nas configurações do Wi-Fi - FWA"],
-        ["Cobrança de reparo (Dentro do prazo)", "COBRANÇA DE REPARO DENTRO DO PRAZO", false, "Reparo Físico", "Entrou em contato cobrando atendimento, visto o mesmo encontrar-se dentro do prazo, informado e reforçado prazo ao cliente, o mesmo ciente. Por gentileza, verificar e priorizar..", "COBRANÇA DE REPARO DENTRO DO PRAZO"],
-        ["spam", "Solicitação de dados", false, "Sem serviço", "Atendimento finalizado por spam, cliente encaminhou inúmeras vezes a mesma mensagem tornando inviável prosseguir com o atendimento.", ""],
-        ["los com valor", "", false, "L", "", ""],
-        ["Nova mensagem", "", false, "Sem serviço", "", ""],
-        ["Suspeita de LOS com valor", "Suspeita de LOS", true, "Reparo Físico", "Cliente informa haver um LED vermelho piscando. Questionado se LED LOS estava ativa, se havia ocorrido acidentes ou alguma remoção de equipamento e se havia tido quedas de energias recentes, o cliente informou que tem uma luz vermelha acesa e não para as outras perguntas. Verificada que a rota está normal. Aberto O.S. para verificação no local. Cliente ciente do valor de R$20,00 pelo envio da equipe e pode ser gerado mais valores. Realizar contato para agendamento.", "los"],
-        ["COBRANÇA DE REPARO FORA DO PRAZO", "COBRANÇA DE REPARO FORA DO PRAZO", false, "Sem serviço", "Cliente entrou em contato informando que a visita técnica permanece pendente e já se encontra fora do prazo previsto. Realizada cobrança junto à equipe responsável, solicitando prioridade no atendimento devido ao atraso. Cliente orientado a aguardar, sendo informado de que a solicitação está sendo acompanhada até a conclusão da visita.", ""]
-    ];
-
-    var base = [];
-    for (var i = 0; i < raw.length; i++) {
-        var isExt = raw[i][2];
-        var tagInt = raw[i][1];
-        var srvExt = raw[i][3];
-        var tagExt = raw[i][5] || tagInt;
-        var titulo = raw[i][0];
-        base.push({ id: i, titulo: titulo, etiqueta: tagInt, externo: isExt, servico: srvExt, mensagem: raw[i][4], etiqueta_externo: tagExt });
-    }
-
-    var themeStyles = {
-        black_red: { bg: '#08060f', border: '#dc2626', text: '#f1f5f9', inBg: '#1a0505', inBdr: '#991b1b', btnBg: '#0284c7', headTxt: '#fca5a5', glow: 'rgba(220,38,38,0.45)', btnBorder: '#dc2626' },
-        light_basic: { bg: '#ffffff', border: '#cbd5e1', text: '#0f172a', inBg: '#f8fafc', inBdr: '#94a3b8', btnBg: '#2563eb', headTxt: '#1e293b', glow: 'rgba(148,163,184,0.3)', btnBorder: '#2563eb' },
-        dark_basic: { bg: '#121212', border: '#333333', text: '#e0e0e0', inBg: '#1e1e1e', inBdr: '#444444', btnBg: '#3b82f6', headTxt: '#f3f4f6', glow: 'rgba(0,0,0,0.5)', btnBorder: '#555555' },
-        white_blue: { bg: '#ffffff', border: '#0284c7', text: '#0f172a', inBg: '#f0f9ff', inBdr: '#0284c7', btnBg: '#0284c7', headTxt: '#0369a1', glow: 'rgba(2,132,199,0.3)', btnBorder: '#0284c7' },
-        purple_black: { bg: '#090514', border: '#7e22ce', text: '#e9d5ff', inBg: '#1e1035', inBdr: '#6b21a8', btnBg: '#9333ea', headTxt: '#d8b4fe', glow: 'rgba(126,34,206,0.5)', btnBorder: '#a855f7' },
-        green_yellow: { bg: '#022c22', border: '#eab308', text: '#fef08a', inBg: '#064e3b', inBdr: '#854d0e', btnBg: '#15803d', headTxt: '#fef08a', glow: 'rgba(234,179,8,0.4)', btnBorder: '#eab308' },
-        black_blue: { bg: '#030712', border: '#0284c7', text: '#e0f2fe', inBg: '#0f172a', inBdr: '#0369a1', btnBg: '#0284c7', headTxt: '#38bdf8', glow: 'rgba(2,132,199,0.5)', btnBorder: '#38bdf8' },
-        black_yellow_rays: { bg: '#0c0a09', border: '#facc15', text: '#fef08a', inBg: '#1c1917', inBdr: '#ca8a04', btnBg: '#ca8a04', headTxt: '#fef08a', glow: 'rgba(250,204,21,0.6)', btnBorder: '#facc15' },
-        orange_5g: { bg: '#431407', border: '#f97316', text: '#ffffff', inBg: '#7c2d12', inBdr: '#c2410c', btnBg: '#ea580c', headTxt: '#ffedd5', glow: 'rgba(249,115,22,0.5)', btnBorder: '#fdba74' },
-        custom: { bg: savedBg, border: savedBdr, text: '#ffffff', inBg: '#111827', inBdr: savedBdr, btnBg: savedBdr, headTxt: '#ffffff', glow: savedBdr, btnBorder: savedBdr }
-    };
-
-    var iconSVGs = {
-        clover: '<svg viewBox="0 0 100 100" class="hud-icon" style="background:#fff;border-radius:50%;"><path d="M50,50 C20,30 30,10 50,30 C70,10 80,30 50,50 C80,50 70,80 50,60 C30,80 20,50 50,50 Z" fill="#4ade80" stroke="#166534" stroke-width="2"/><path d="M50,50 L50,85" stroke="#166534" stroke-width="4"/></svg>',
-        katana: '<svg viewBox="0 0 100 100" class="hud-icon" style="background:#fff;border-radius:50%;"><path d="M15,85 L85,15 L75,5 L5,75 Z" fill="#94a3b8" stroke="#0f172a" stroke-width="2"/><path d="M10,90 L25,75 L20,70 L5,85 Z" fill="#ef4444" stroke="#000" stroke-width="2"/><circle cx="22" cy="72" r="5" fill="#facc15" stroke="#000" stroke-width="2"/></svg>',
-        flag_br: '<svg viewBox="0 0 100 100" class="hud-icon" style="background:#fff;border-radius:50%;"><rect x="10" y="25" width="80" height="50" fill="#009c3b"/><polygon points="50,30 85,50 50,70 15,50" fill="#ffdf00"/><circle cx="50" cy="50" r="12" fill="#002776"/></svg>',
-        flag_jp: '<svg viewBox="0 0 100 100" class="hud-icon" style="background:#fff;border-radius:50%;"><rect x="10" y="25" width="80" height="50" fill="#ffffff" stroke="#cbd5e1" stroke-width="2"/><circle cx="50" cy="50" r="15" fill="#bc002d"/></svg>',
-        soccer: '<svg viewBox="0 0 100 100" class="hud-icon" style="background:#fff;border-radius:50%;"><circle cx="50" cy="50" r="42" fill="#fff" stroke="#0f172a" stroke-width="4"/><polygon points="50,30 35,40 40,60 60,60 65,40" fill="#0f172a"/><line x1="50" y1="30" x2="50" y2="8" stroke="#0f172a" stroke-width="3"/><line x1="35" y1="40" x2="12" y2="35" stroke="#0f172a" stroke-width="3"/><line x1="40" y1="60" x2="22" y2="78" stroke="#0f172a" stroke-width="3"/><line x1="60" y1="60" x2="78" y2="78" stroke="#0f172a" stroke-width="3"/><line x1="65" y1="40" x2="88" y2="35" stroke="#0f172a" stroke-width="3"/></svg>',
-        volleyball: '<svg viewBox="0 0 100 100" class="hud-icon" style="background:#fff;border-radius:50%;"><circle cx="50" cy="50" r="42" fill="#fff" stroke="#2563eb" stroke-width="4"/><path d="M 50,8 A 42,42 0 0,1 92,50" fill="none" stroke="#2563eb" stroke-width="3"/><path d="M 8,50 A 42,42 0 0,1 50,92" fill="none" stroke="#2563eb" stroke-width="3"/><path d="M 20,20 Q 50,50 80,80" fill="none" stroke="#2563eb" stroke-width="3"/></svg>',
-        basketball: '<svg viewBox="0 0 100 100" class="hud-icon" style="background:#fff;border-radius:50%;"><circle cx="50" cy="50" r="42" fill="#ea580c" stroke="#000" stroke-width="4"/><line x1="8" y1="50" x2="92" y2="50" stroke="#000" stroke-width="3"/><line x1="50" y1="8" x2="50" y2="92" stroke="#000" stroke-width="3"/><path d="M 25,12 A 42,42 0 0,1 25,88" fill="none" stroke="#000" stroke-width="3"/><path d="M 75,12 A 42,42 0 0,0 75,88" fill="none" stroke="#000" stroke-width="3"/></svg>',
-        brisanet: '<svg viewBox="0 0 100 100" class="hud-icon" style="background:#fff;border-radius:50%;"><circle cx="50" cy="50" r="42" fill="#0284c7"/><path d="M20,65 Q50,20 80,65" fill="none" stroke="#f97316" stroke-width="8" stroke-linecap="round"/><path d="M32,65 Q50,35 68,65" fill="none" stroke="#ffffff" stroke-width="6" stroke-linecap="round"/><circle cx="50" cy="65" r="6" fill="#ffffff"/></svg>',
-        gamepad: '<svg viewBox="0 0 100 100" class="hud-icon" style="background:#fff;border-radius:50%;"><rect x="10" y="30" width="80" height="45" rx="15" fill="#334155"/><circle cx="30" cy="52" r="10" fill="#000"/><polygon points="30,44 26,52 34,52" fill="#fff"/><circle cx="70" cy="46" r="4" fill="#ef4444"/><circle cx="78" cy="54" r="4" fill="#eab308"/><circle cx="62" cy="54" r="4" fill="#3b82f6"/><circle cx="70" cy="62" r="4" fill="#22c55e"/></svg>',
-        dragon: '<svg viewBox="0 0 100 100" class="hud-icon" style="background:#fff;border-radius:50%;"><path d="M20,50 Q40,10 60,30 T80,50 Q60,90 40,70 T20,50" fill="none" stroke="#ef4444" stroke-width="5"/><circle cx="70" cy="35" r="4" fill="#000"/><path d="M70,25 L85,15 M75,20 L90,25" stroke="#ef4444" stroke-width="3"/></svg>'
-    };
-
-    function applyLiveStyle(thmKey, icnKey, fntKey, cBg, cBdr) {
-        localStorage.setItem('y_hud_theme', thmKey);
-        localStorage.setItem('y_hud_icon', icnKey);
-        localStorage.setItem('y_hud_font', fntKey);
-        if (cBg) localStorage.setItem('y_hud_c_bg', cBg);
-        if (cBdr) localStorage.setItem('y_hud_c_bdr', cBdr);
-
-        var curT = themeStyles[thmKey] || themeStyles.black_red;
-        if (thmKey === 'custom') {
-            curT.bg = cBg || savedBg;
-            curT.border = cBdr || savedBdr;
-            curT.inBdr = cBdr || savedBdr;
-            curT.btnBg = cBdr || savedBdr;
-            curT.btnBorder = cBdr || savedBdr;
-            curT.glow = cBdr || savedBdr;
-        }
-
-        var curFont = fontFamilies[fntKey] || fontFamilies.cyber;
-        var curSize = fontSizes[fntKey] || fontSizes.cyber;
-        var fL = d.getElementById('m-custom-font');
-        if (fL) fL.href = fontLinks[fntKey] || fontLinks.cyber;
-
-        var styleTag = d.getElementById('m-yoda-circuit-hud');
-        if (styleTag) {
-            styleTag.innerHTML = `
-                #m-ui, #m-btn, #m-iframe-modal {
-                    --bg:${curT.bg}; --border:${curT.border}; --text:${curT.text};
-                    --inBg:${curT.inBg}; --inBdr:${curT.inBdr}; --btnBg:${curT.btnBg};
-                    --headTxt:${curT.headTxt}; --glow:${curT.glow}; --btnBorder:${curT.btnBorder};
-                    --fFamily:${curFont}; --fSize:${curSize};
-                }
-                #m-ui{position:fixed;bottom:80px;right:20px;width:370px;background-color:var(--bg);border:2px solid var(--border);border-radius:6px;padding:16px;z-index:2147483647;font-family:var(--fFamily);font-size:var(--fSize);box-shadow:0 0 25px var(--glow);color:var(--text);box-sizing:border-box}
-                #m-ui input:not([type="radio"]):not([type="checkbox"]),#m-ui textarea,#m-ui select{width:100%;margin:4px 0 8px;padding:7px;background:var(--inBg);color:var(--text);border:1px solid var(--inBdr);border-radius:4px;outline:none;font-family:inherit;font-size:var(--fSize);box-sizing:border-box}
-                #m-ui input:focus,#m-ui textarea:focus,#m-ui select:focus{border-color:var(--border);box-shadow:0 0 8px var(--glow)}
-                #m-head{display:flex;justify-content:space-between;font-weight:700;color:var(--headTxt);margin-bottom:12px;border-bottom:2px solid var(--border);padding-bottom:6px}
-                .seg{display:flex;border:1px solid var(--inBdr);border-radius:4px;overflow:hidden;margin-bottom:8px}
-                .seg label{flex:1;text-align:center;padding:7px;margin:0;cursor:pointer;color:var(--text);font-size:calc(var(--fSize) - 1px);background:var(--inBg);text-transform:uppercase;transition:0.2s}
-                .seg input[type="radio"]{display:none}
-                .seg input[type="radio"]:checked+label{background:var(--border);color:#fff;font-weight:700}
-                .tw{display:flex;align-items:center;gap:6px;font-size:calc(var(--fSize) - 1px);color:var(--headTxt);text-transform:uppercase}
-                .tg{position:relative;width:28px;height:16px;background:var(--inBg);border:1px solid var(--inBdr);border-radius:8px;cursor:pointer;margin:0;transition:0.2s}
-                .tg::after{content:"";position:absolute;top:2px;left:2px;width:10px;height:10px;background:var(--border);border-radius:50%;transition:0.2s}
-                input[type="checkbox"]:checked+.tg{background:var(--border)}
-                input[type="checkbox"]:checked+.tg::after{left:14px;background:#fff}
-                input[type="checkbox"]{display:none}
-                #m-go{width:100%;background:var(--btnBg);color:#fff;border:none;border-radius:4px;padding:12px;font-weight:700;font-size:calc(var(--fSize) + 1px);cursor:pointer;text-transform:uppercase;box-shadow:0 0 12px var(--glow);margin-top:4px;transition:0.2s}
-                #m-go:hover{filter:brightness(1.2)}
-                #m-btn{position:fixed;bottom:20px;right:20px;z-index:2147483647;width:60px;height:60px;background:var(--bg);border:2px solid var(--btnBorder);border-radius:50%;cursor:pointer;box-shadow:0 0 15px var(--glow);display:flex;align-items:center;justify-content:center;transition:0.3s;padding:6px}
-                #m-btn:hover{box-shadow:0 0 25px var(--glow);transform:scale(1.05)}
-                .hud-icon{width:80%;height:80%;border-radius:50%;object-fit:cover;}
-                .ia-box{background:var(--inBg);border:1px solid var(--btnBg);border-radius:4px;padding:6px;margin-bottom:8px}
-                .ia-title{color:var(--headTxt);font-size:calc(var(--fSize) - 1px);font-weight:bold}
-                .ia-textarea{margin-top:4px!important;margin-bottom:4px!important;border-color:var(--btnBg)!important}
-                .ia-btn{background:var(--btnBg)!important;color:#fff!important;font-size:calc(var(--fSize) - 1px)!important;padding:6px!important;margin:0!important;border:1px solid var(--btnBg)!important;width:100%;cursor:pointer;border-radius:4px;font-weight:bold;transition:0.2s}
-                .ia-btn:hover{filter:brightness(1.2)}
-                .util-btn{flex:1;margin:0;background:var(--inBg)!important;color:var(--text)!important;border:1px solid var(--inBdr)!important;font-size:calc(var(--fSize) - 1px)!important;padding:8px!important;cursor:pointer;border-radius:4px;font-weight:bold;transition:0.2s}
-                .util-btn:hover{border-color:var(--btnBg)!important;color:var(--btnBg)!important}
-                .cfg-sel{font-size:calc(var(--fSize) - 2px)!important;padding:3px!important;margin:0!important;width:100%!important;display:block;cursor:pointer;background:var(--inBg);color:var(--text);border:1px solid var(--inBdr);margin-bottom:4px!important}
-                .tab-btn{flex:1;background:var(--inBg);color:var(--text);border:1px solid var(--inBdr);padding:6px;font-size:calc(var(--fSize) - 2px);font-family:var(--fFamily);cursor:pointer;border-radius:4px;font-weight:bold;transition:0.2s;margin:0;}
-                .tab-btn:hover,.tab-btn.active{background:var(--btnBg);color:#fff;}
-                #tag-display { font-size: calc(var(--fSize) - 2px); color: var(--text); background: var(--inBg); border: 1px solid var(--inBdr); padding: 6px; border-radius: 4px; margin-bottom: 6px; text-align: center; }
-            `;
-        }
-        var btn = d.getElementById('m-btn');
-        if (btn) btn.innerHTML = iconSVGs[icnKey] || iconSVGs.clover;
-    }
-
-    var s = d.createElement('style');
-    s.id = 'm-yoda-circuit-hud';
-    d.head.appendChild(s);
-    
-    var b = d.createElement('div');
-    b.id = 'm-btn';
-    d.body.appendChild(b);
-
-    var p = d.createElement('div');
-    p.id = 'm-ui';
-    p.style.display = 'block';
-
-    p.innerHTML = `
-        <div id="m-head"><span>[ YODA HUD ]</span><span id="m-x" style="cursor:pointer;color:var(--headTxt)">[X]</span></div>
-        <div style="display:flex;gap:4px;margin-bottom:8px;">
-            <button type="button" id="tab-main" class="tab-btn active" style="background:var(--btnBg);color:#fff;">🏷️ REGISTRO</button>
-            <button type="button" id="tab-ai" class="tab-btn">🤖 IA GROQ</button>
-            <button type="button" id="tab-vis" class="tab-btn">🎨 VIS.</button>
-            <button type="button" id="tab-game" class="tab-btn">🎮 JOGO</button>
-        </div>
-        
-        <div id="content-main">
-            <div class="seg">
-                <input type="radio" name="m-ct" id="ct-tit" value="titular" checked><label for="ct-tit">Titular</label>
-                <input type="radio" name="m-ct" id="ct-ter" value="terceiro"><label for="ct-ter">Terceiro</label>
-            </div>
-            <input id="m-ter" placeholder="Nome do Terceiro..." style="display:none">
-            <div class="seg">
-                <input type="radio" name="m-tc" id="tc-all" value="all" checked><label for="tc-all">Todos</label>
-                <input type="radio" name="m-tc" id="tc-ftth" value="ftth"><label for="tc-ftth">FTTH</label>
-                <input type="radio" name="m-tc" id="tc-fwa" value="fwa"><label for="tc-fwa">FWA</label>
-            </div>
-            <input id="m-sr" placeholder="🔍 Buscar motivo...">
-            <select id="m-sm"></select>
-            <textarea id="m-msg" rows="4" placeholder="Mensagem de registro..."></textarea>
-            
-            <div id="tag-display">🏷️ Interna: Nenhuma<br>🚀 Externa: Não se aplica</div>
-            
-            <div style="display:flex;justify-content:space-between;align-items:center;background:var(--inBg);padding:8px;border:1px solid var(--inBdr);border-radius:4px;margin-bottom:8px">
-                <div class="tw">Ext<input type="checkbox" id="m-ext"><label class="tg" for="m-ext"></label></div>
-                <div class="tw">Agd<input type="checkbox" id="m-ag"><label class="tg" for="m-ag"></label></div>
-            </div>
-            
-            <textarea id="m-obs" rows="1" placeholder="Observação (opcional)..."></textarea>
-            <div style="display:flex;gap:6px;margin-bottom:6px;">
-                <button type="button" id="m-saski" class="util-btn">SASKI [F3]</button>
-                <button type="button" id="m-wookie" class="util-btn">PASTOR [F4]</button>
-            </div>
-            <button id="m-go">FINALIZAR E REGISTRAR</button>
-        </div>
-        
-        <div id="content-ai" style="display:none;">
-            <input type="text" id="groq-key" placeholder="API Key Groq (gsk_...)" style="margin-bottom:8px;">
-            <textarea id="groq-chat" class="ia-textarea" rows="4" placeholder="Cole o histórico do chat bruto aqui..."></textarea>
-            <button type="button" id="groq-btn" class="ia-btn">GERAR RELATO TÉCNICO</button>
-            <div id="groq-res-box" style="display:none;margin-top:8px;">
-                <span style="font-size:10px;color:var(--headTxt);">Resultado:</span>
-                <textarea id="groq-out" class="ia-textarea" rows="5" readonly></textarea>
-                <div style="display:flex;gap:4px;">
-                    <button type="button" id="groq-copy" class="util-btn">COPIAR</button>
-                    <button type="button" id="groq-use" class="util-btn" style="background:var(--btnBg)!important;color:#fff!important;">USAR NO REGISTRO</button>
-                </div>
-            </div>
-        </div>
-        
-        <div id="content-vis" style="display:none;">
-            <div style="display:flex;gap:4px;margin-bottom:6px;">
-                <select id="m-sel-thm" class="cfg-sel">
-                    <option value="black_red">Preto/Vermelho</option>
-                    <option value="light_basic">Claro Básico</option>
-                    <option value="dark_basic">Escuro Básico</option>
-                    <option value="white_blue">Branco/Azul</option>
-                    <option value="purple_black">Roxo/Preto</option>
-                    <option value="green_yellow">Verde/Amarelo</option>
-                    <option value="black_blue">Preto/Azul</option>
-                    <option value="black_yellow_rays">Preto/Amarelo⚡</option>
-                    <option value="orange_5g">Laranja 5G</option>
-                    <option value="custom">ARGB Custom</option>
-                </select>
-                <select id="m-sel-icn" class="cfg-sel">
-                    <option value="clover">Trevo 🍀</option>
-                    <option value="katana">Katana ⚔️</option>
-                    <option value="flag_br">Brasil 🇧🇷</option>
-                    <option value="flag_jp">Japão 🇯🇵</option>
-                    <option value="soccer">Futebol ⚽</option>
-                    <option value="volleyball">Vôlei 🏐</option>
-                    <option value="basketball">Basquete 🏀</option>
-                    <option value="brisanet">Brisanet 📡</option>
-                    <option value="gamepad">Controle 🎮</option>
-                    <option value="dragon">Dragão 🐉</option>
-                </select>
-                <select id="m-sel-fnt" class="cfg-sel">
-                    <option value="cyber">Cyber</option>
-                    <option value="old">Retro</option>
-                    <option value="common">Comum</option>
-                    <option value="signature">Assinatura</option>
-                    <option value="cloister">Cloister Black</option>
-                </select>
-            </div>
-            <div id="m-custom-colors" style="display:none;gap:6px;margin-bottom:6px;align-items:center;">
-                <span style="font-size:9px;">Fundo:</span><input type="color" id="m-clr-bg" value="${savedBg}" style="width:30px;height:20px;padding:0;margin:0;cursor:pointer;">
-                <span style="font-size:9px;">Borda:</span><input type="color" id="m-clr-bdr" value="${savedBdr}" style="width:30px;height:20px;padding:0;margin:0;cursor:pointer;">
-            </div>
-        </div>
-
-        <div id="content-game" style="display:none;">
-            <div style="text-align:center; font-weight:bold; margin-bottom:4px;">NÍVEL: <span id="g-level">1</span> | PONTOS: <span id="g-score">0</span></div>
-            <canvas id="gameCanvas" width="330" height="150" style="background:#87CEEB; border-radius:4px; display:block; margin:0 auto; cursor:pointer;"></canvas>
-            <div style="font-size: 10px; margin-top: 10px; line-height:1.4;">
-                <b style="color:var(--btnBg);">🎮 Regras do Jogo:</b> O objetivo é chegar à casa do cliente! Pressione <kbd>Espaço</kbd> ou clique no céu azul para pular. A cada nível a velocidade e a distância aumentam. São 100 níveis, e surgem novos obstáculos no caminho (🚧 🐕 🚗). <br><br>
-                <b style="color:#ef4444;">👻 Regras Ghostbu:</b> Caso o cliente não responda (Ghosting), aguarde o tempo regulamentar estipulado pela operação, envie a mensagem de alerta de inatividade, e finalize com a etiqueta "Inatividade Chat" <b>sem</b> acionar o reparo externo.
-            </div>
-        </div>
-    `;
-
-    d.body.appendChild(p);
-    applyLiveStyle(savedThm, savedIcn, savedFnt, savedBg, savedBdr);
-
-    var stThm = d.getElementById('m-sel-thm'), stIcn = d.getElementById('m-sel-icn'), stFnt = d.getElementById('m-sel-fnt'), cColors = d.getElementById('m-custom-colors'), cBg = d.getElementById('m-clr-bg'), cBdr = d.getElementById('m-clr-bdr');
-
-    if (savedThm === 'custom' && cColors) cColors.style.display = 'flex';
-
-    if (stThm) {
-        stThm.value = savedThm;
-        stThm.onchange = function () {
-            if (this.value === 'custom') cColors.style.display = 'flex';
-            else cColors.style.display = 'none';
-            applyLiveStyle(this.value, stIcn.value, stFnt.value, cBg.value, cBdr.value);
-        };
-    }
-    if (stIcn) {
-        stIcn.value = savedIcn;
-        stIcn.onchange = function () { applyLiveStyle(stThm.value, this.value, stFnt.value, cBg.value, cBdr.value); };
-    }
-    if (stFnt) {
-        stFnt.value = savedFnt;
-        stFnt.onchange = function () { applyLiveStyle(stThm.value, stIcn.value, this.value, cBg.value, cBdr.value); };
-    }
-    if (cBg) {
-        cBg.oninput = function () { applyLiveStyle('custom', stIcn.value, stFnt.value, this.value, cBdr.value); };
-    }
-    if (cBdr) {
-        cBdr.oninput = function () { applyLiveStyle('custom', stIcn.value, stFnt.value, cBg.value, this.value); };
-    }
-
-    // GESTÃO DE ABAS E PAUSA DO JOGO
-    function switchTab(showId, btnId) {
-        ['content-main', 'content-ai', 'content-vis', 'content-game'].forEach(id => d.getElementById(id).style.display = 'none');
-        ['tab-main', 'tab-ai', 'tab-vis', 'tab-game'].forEach(id => {
-            d.getElementById(id).style.background = 'var(--inBg)';
-            d.getElementById(id).style.color = 'var(--text)';
-        });
-        d.getElementById(showId).style.display = 'block';
-        d.getElementById(btnId).style.background = 'var(--btnBg)';
-        d.getElementById(btnId).style.color = '#fff';
-        
-        if (showId === 'content-game') { startGameLoop(); } else { stopGameLoop(); }
-    }
-
-    d.getElementById('tab-main').onclick = function () { switchTab('content-main', 'tab-main'); };
-    d.getElementById('tab-ai').onclick = function () { switchTab('content-ai', 'tab-ai'); };
-    d.getElementById('tab-vis').onclick = function () { switchTab('content-vis', 'tab-vis'); };
-    d.getElementById('tab-game').onclick = function () { switchTab('content-game', 'tab-game'); };
+javascript
+(function(){'use strict';var d=document;if(d.getElementById('m-ui')){var p=d.getElementById('m-ui');p.style.display=p.style.display==='none'?'flex':'none';return;}var ls=localStorage,savedThm=ls.getItem('y_hud_theme')||'black_red',savedIcn=ls.getItem('y_hud_icon')||'akatsuki',savedFnt=ls.getItem('y_hud_font')||'cyber',savedTxtClr=ls.getItem('y_hud_tclr')||'#f1f5f9',savedBg=ls.getItem('y_hud_c_bg')||'#08060f',savedBdr=ls.getItem('y_hud_c_bdr')||'#dc2626';var fontLinks={cyber:'https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700&display=swap',old:'https://fonts.googleapis.com/css2?family=VT323&display=swap',common:'https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap',signature:'https://fonts.googleapis.com/css2?family=Caveat:wght@600&display=swap',cloister:'https://fonts.googleapis.com/css2?family=UnifrakturMaguntia&display=swap'};var fontFamilies={cyber:"'Orbitron', monospace",old:"'VT323', monospace",common:"'Inter', sans-serif",signature:"'Caveat', cursive",cloister:"'UnifrakturMaguntia', cursive"};var fontSizes={cyber:'10.5px',old:'15px',common:'12px',signature:'16px',cloister:'14px'};var fL=d.createElement('link');fL.id='m-custom-font';fL.rel='stylesheet';fL.href=fontLinks[savedFnt]||fontLinks.cyber;d.head.appendChild(fL);var D={"$RF":"Reparo F\xEDsico","$RR":"Reparo R\xE1pido","$SA":"Servi\xE7o Adicional","$AG":" Agendado de acordo com a disponibilidade do cliente.","$DC":"fez contato e durante o atendimento ficou inativo durante todo o atendimento, resultando no encerramento autom\xE1tico devido \xE0 falta de atividade.","$LT":"fez contato para relatar lentid\xE3o em sua conex\xE3o. Ap\xF3s verificar as informa\xE7\xF5es junto ao cliente, constatou-se que o problema ocorria tanto nas proximidades quanto em locais mais distantes do roteador/modem, contudo limitava-se \xE0 rede Wi-Fi. Foram executados os procedimentos padr\xF5es conforme documentados nos registros de eventos, e solicitados alguns procedimentos manuais usuais. "};var rawD=[["Desconex\xE3o Chat","Inatividade Chat",0,"$RF","$DC","Desconex\xE3o Chat"],["Rota Inoperante","Rota Inoperante - FTTH",0,"$RF","Fez contato para relatar a aus\xEAncia de acesso. Foi explicado a ele que, naquele momento, a falta de acesso se deve a um rompimento de cabo de fibra que impactou toda a sua rota. Foi fornecido o prazo estimado pela URA para a regulariza\xE7\xE3o da situa\xE7\xE3o. O cliente foi informado e est\xE1 ciente dos detalhes.","Rota Inoperante - FTTH"],["Suspeita de LOS","Suspeita de LOS",1,"$RF","Relatou a falta de acesso e a presen\xE7a de um LED vermelho piscando. Ao questionar a possibilidade de incidentes ou remo\xE7\xE3o de equipamentos, o cliente negou qualquer ocorr\xEAncia. Ap\xF3s constatar a normalidade da rota, foi gerada uma Ordem de Servi\xE7o (O.S.) para efetuar uma inspe\xE7\xE3o direta no local.$AG","los"],["Transfer\xEAncia","Solicita\xE7\xE3o de dados",0,"$RF","entrou em contato buscando informa\xE7\xF5es ou um servi\xE7o que n\xE3o se enquadrava na compet\xEAncia deste setor. N\xE3o houve necessidade de sondagem. Em vista disso, o cliente foi encaminhado ao setor competente para atender \xE0 sua demanda.","Solicita\xE7\xE3o de dados"],["Desconex\xE3o Chat - Internet","Desconex\xE3o Chat",0,"$RF","cliente fez contato para relatar problema em sua conex\xE3o a internet. Durante o atendimento, ele ficou inativo durante todo o atendimento, resultando no encerramento autom\xE1tico devido \xE0 falta de atividade.","Desconex\xE3o Chat"],["Lentid\xE3o - Resolvida","Lentid\xE3o - FTTH",0,"$RR","$LT O cliente informou que o acesso foi normalizado.","Lentid\xE3o"],["Lentid\xE3o - Externo","Lentid\xE3o - FTTH",1,"$RR","fez contato para relatar lentid\xE3o em sua conex\xE3o recorrentemente. Ap\xF3s verificar as informa\xE7\xF5es junto ao cliente, constatou-se que o problema ocorria tanto nas proximidades quanto em locais mais distantes do roteador/modem, contudo limitava-se \xE0 rede Wi-Fi. Foram executados os procedimentos padr\xF5es conforme documentados nos registros de eventos, e solicitados alguns procedimentos manuais usuais. O cliente informou que a princ\xEDpio o acesso foi normalizado, mas ir\xE1 continuar realizando testes ao longo do restante do dia e, caso a instabilidade persista, ele ir\xE1 entrar em contato conosco para que possamos verificar ou providenciar o envio de uma equipe ao local, se necess\xE1rio.","Lentid\xE3o"],["Lentid\xE3o - Ficou testando","Lentid\xE3o - FTTH",0,"$RR","Cliente relatou lentid\xE3o na conex\xE3o. Foram realizados procedimentos de otimiza\xE7\xE3o da rede, incluindo reinicializa\xE7\xE3o remota dos equipamentos e verifica\xE7\xE3o do sinal. O cliente permaneceu em teste para avaliar a melhoria no acesso. Caso persista a instabilidade, orientamos entrar em contato novamente para novas verifica\xE7\xF5es.","Lentid\xE3o"],["Lentid\xE3o - Inativo","Lentid\xE3o - FTTH",0,"$RF","cliente, entrou em contato informando estar com problemas de lentid\xE3o na sua conex\xE3o, verificado que o sinal da fibra est\xE1 normal, perguntei se o problema ocorria em todos os aparelhos, mesmo quando o cliente acessa a rede pr\xF3ximo do roteador, o cliente informou que sim, ent\xE3o foi alterado o canal, ativado roteador e reiniciado manualmente os equipamentos, cliente ficou inativo chamado ser\xE1 encerrado.","Lentid\xE3o"],["Lentid\xE3o - Recorrente","Lentid\xE3o - FTTH",1,"$RR","informa estar enfrentando lentid\xE3o. Ap\xF3s verifica\xE7\xE3o, observa-se que o problema afeta todos os dispositivos e se restringe \xE0 rede sem fio. Eu menciono a inten\xE7\xE3o de atualizar a rede, no entanto, o cliente destaca que essa quest\xE3o \xE9 recorrente e deseja que uma equipe externa conduza uma an\xE1lise, uma vez que j\xE1 havia contatado previamente sem sucesso. Diante da insatisfa\xE7\xE3o do cliente e da constata\xE7\xE3o de que se trata de uma situa\xE7\xE3o frequente ainda n\xE3o atendida localmente, uma Ordem de Servi\xE7o (O.S.) vai ser aberta para resolver o problema e garantir a reten\xE7\xE3o do cliente.$AG","Lentid\xE3o"],["Rede sumiu","Instabilidade TP-LINK",0,"$RR","relatou que estava sem conex\xE3o com a internet e que o nome da rede Wi-Fi n\xE3o estava aparecendo. Ap\xF3s realizar algumas altera\xE7\xF5es na configura\xE7\xE3o da rede, a conex\xE3o foi restabelecida com o nome e senha originais. O usu\xE1rio confirmou que a internet voltou a funcionar corretamente.","Instabilidade TP-LINK"],["Sem gerencia - Resolvido","Sem acesso TP-LINK",0,"$RR","fez contato para comunicar a aus\xEAncia de acesso. Foi verificado que a ONU apresentava sinal e o roteador n\xE3o estava gerenciando a conex\xE3o. Ap\xF3s verificar a conex\xE3o do cabo, orientou-se o cliente a reiniciar o roteador TP-link. Paralelamente, foi efetuada uma reconfigura\xE7\xE3o remota. Com base na realiza\xE7\xE3o desses passos, foi poss\xEDvel restabelecer o acesso.","Sem acesso TP-LINK"],["Sem gerencia - Externo","Sem acesso TP-LINK",1,"$RR","fez contato para comunicar a aus\xEAncia de acesso. Foi verificado que a ONU apresentava sinal e o roteador n\xE3o estava gerenciando a conex\xE3o. Ap\xF3s verificar a conex\xE3o do cabo, orientou-se o cliente a reiniciar o roteador TP-link. Paralelamente, foi efetuada uma reconfigura\xE7\xE3o remota. Mesmo ap\xF3s a realiza\xE7\xE3o desses passos, n\xE3o foi poss\xEDvel restabelecer o acesso, dessa forma foi gerada uma Ordem de Servi\xE7o (O.S.) para efetuar uma inspe\xE7\xE3o direta no local.$AG","Sem acesso TP-LINK"],["PON Piscando - Resolvido","PON piscando - FTTH",0,"$RF","Relata que est\xE1 enfrentando uma interrup\xE7\xE3o na sua conex\xE3o com a internet. Ap\xF3s indagar sobre a situa\xE7\xE3o do LED PON, o cliente confirma que ele est\xE1 piscando. Ao constatar que a rota est\xE1 operante, foram executados os procedimentos padr\xF5es conforme documentados nos registros de eventos. Ap\xF3s a execu\xE7\xE3o dessas a\xE7\xF5es, a conectividade foi restabelecida com \xEAxito.","PON Piscando"],["PON Piscando - Externo","PON piscando - FTTH",1,"$RF","Relata que est\xE1 enfrentando uma interrup\xE7\xE3o na sua conex\xE3o com a internet. Ap\xF3s questionar sobre a situa\xE7\xE3o do LED PON, o cliente confirma que ele est\xE1 piscando. Ao constatar que a rota est\xE1 operante, foram executados os procedimentos padr\xF5es conforme documentados nos registros de eventos. O cliente informou que o acesso continua interrompido, desta forma foi gerada uma Ordem de Servi\xE7o (O.S.) para efetuar uma inspe\xE7\xE3o direta no local.$AG","PON Piscando"],["PON Apagada - Resolvido","PON Apagada",0,"$RR","Entrou em contato informando que os servi\xE7os da Brisanet est\xE3o sem sinal. Ao ser questionado sobre a ativa\xE7\xE3o da LED PON e a ocorr\xEAncia de acidentes ou remo\xE7\xE3o de equipamento, o cliente negou qualquer incidente. Ap\xF3s verificar que a rota est\xE1 normal, procedeu-se \xE0 reconfigura\xE7\xE3o e reinicializa\xE7\xE3o do modem ONU, al\xE9m de conect\xE1-lo em outra tomada de energia. O cliente reportou que o acesso foi normalizado.","PON apagada - FTTH"],["PON Apagada - Externo","PON apagada - FTTH",1,"$RR","Entrou em contato relatando uma interrup\xE7\xE3o em sua conex\xE3o com a internet. Ap\xF3s questionar sobre a situa\xE7\xE3o do LED PON, o cliente confirmou que ele est\xE1 apagado. Ao constatar que a rota est\xE1 operante, seguimos os procedimentos padr\xF5es conforme documentados nos registros de eventos. Adicionalmente, conectamos o equipamento em outra tomada de energia e verificamos o bot\xE3o 'ON/OFF'. No entanto, o cliente informou que o acesso continua interrompido. Diante dessa situa\xE7\xE3o, foi gerada uma Ordem de Servi\xE7o (O.S.) para efetuar uma inspe\xE7\xE3o direta no local e resolver o problema.$AG","PON Apagada"],["Fibra Rompida","Cabo da fibra rompido",1,"$RF","Relata que algo rompeu o cabo de fibra fora de sua resid\xEAncia. N\xE3o foi necess\xE1rio realizar alguma sondagem. Foi aberta uma ordem de servi\xE7o para resolu\xE7\xE3o do problema e a visita t\xE9cnica agendada para de acordo com a disponibilidade do cliente.","Cabo da fibra rompido"],["Fibra Baixa","Cabo de fibra baixo/remanejamento - FTTH",1,"$SA","Relata sobre um cabo de fibra solto fora de sua resid\xEAncia, foi aberta uma Ordem de Servi\xE7o (OS) para verifica\xE7\xE3o.$AG","Cabo de fibra baixo/remanejamento"],["Fibra Ressecada","Troca de cabo fibra - FTTH",1,"$RF","Relata que o cabo de fibra est\xE1 ressecado em sua resid\xEAncia, onde ningu\xE9m mexeu. O cabo corre o risco de ser roto. Foi aberta uma ordem de servi\xE7o para verificar o problema.$AG","Cabo da fibra rompido"],["Remanejamento de Fibra","Cabo de fibra baixo/remanejamento - FTTH",1,"$SA","Relata sobre a necessidade do remanejamento do cabo de fibra, pois, est\xE1 passando sobre propriedades alheias.$AG","Cabo de fibra baixo/remanejamento"],["Quedas na conex\xE3o - Resolvido","Quedas na conex\xE3o - FTTH",0,"$RR","$LT O cliente informou que o acesso foi normalizado.","Instabilidade na rede WI-FI"],["Quedas na conex\xE3o - Externo","Quedas na conex\xE3o - FTTH",1,"$RR","fez contato para relatar quedas de acesso em sua conex\xE3o recorrentemente. Ap\xF3s verificar as informa\xE7\xF5es junto ao cliente, constatou-se que o problema ocorria tanto nas proximidades quanto em locais mais distantes do roteador/modem, contudo limitava-se \xE0 rede Wi-Fi. Foram executados os procedimentos padr\xF5es conforme documentados nos registros de eventos, e solicitados alguns procedimentos manuais usuais. O cliente informou que a princ\xEDpio o acesso foi normalizado, mas ir\xE1 continuar realizando testes ao longo do restante do dia e, caso a instabilidade persista, ele ir\xE1 entrar em contato conosco para que possamos verificar ou providenciar o envio de uma equipe ao local, se necess\xE1rio.","Instabilidade TP-LINK"],["Quedas de conex\xE3o - Ficou testando","Quedas na conex\xE3o - FTTH",0,"$RR","$LT O cliente informou que o acesso continua inst\xE1vel, desta forma foi gerada uma Ordem de Servi\xE7o (O.S.) para efetuar uma inspe\xE7\xE3o direta no local.$AG","Quedas de conex\xE3o - FTTH"],["Sem acesso com sinal - Resolvido","sem Acesso",0,"$RR","fez contato para comunicar a aus\xEAncia de acesso. Foi verificado que a ONU apresentava sinal e o roteador n\xE3o estava gerenciando a conex\xE3o. Ap\xF3s verificar a conex\xE3o do cabo, orientou-se o cliente a reiniciar o roteador TP-link. Paralelamente, foi efetuada uma reconfigura\xE7\xE3o remota. Com base na realiza\xE7\xE3o desses passos, foi poss\xEDvel restabelecer o acesso.","sem Acesso"],["Sem acesso com sinal - Externo","sem Acesso",1,"$RR","fez contato para comunicar a aus\xEAncia de acesso. Foi verificado que a ONU apresentava sinal e o roteador n\xE3o estava gerenciando a conex\xE3o. Ap\xF3s verificar a conex\xE3o do cabo, orientou-se o cliente a reiniciar o roteador TP-link. Paralelamente, foi efetuada uma reconfigura\xE7\xE3o remota. Mesmo ap\xF3s a realiza\xE7\xE3o desses passos, n\xE3o foi poss\xEDvel restabelecer o acesso, dessa forma foi gerada uma Ordem de Servi\xE7o (O.S.) para efetuar uma inspe\xE7\xE3o direta no local.$AG","sem Acesso"],["Sinal irregular - externo","Sinal da fibra do cliente irregular - FTTH",1,"$RF","relata sobre falta de acesso \xE0 internet, foi constatada irregularidade no sinal da PON. A rota foi verificada e estava dentro dos padr\xF5es. Questionado sobre poss\xEDveis incidentes ou remo\xE7\xE3o de equipamentos, o cliente negou qualquer ocorr\xEAncia. Diante disso, foi gerada uma Ordem de Servi\xE7o (OS) para inspe\xE7\xE3o presencial no local, a ser agendada conforme disponibilidade do cliente.","Sinal irregular Fibra"],["Senha da rede wi-fi incorreta","Altera\xE7\xF5es nas configura\xE7\xF5es do Wi-Fi - FTTH",0,"$RF","relata que est\xE1 sem acesso \xE0 internet. Verificamos que a rede Wi-Fi do cliente n\xE3o conecta, com a mensagem de erro de autentica\xE7\xE3o. A falha na autentica\xE7\xE3o pode ter sido causada por uma senha incorreta ou por um problema no roteador. Geramos uma nova senha para o cliente e o acesso foi normalizado.","Altera\xE7\xF5es nas configura\xE7\xF5es do Wi-Fi - FTTH"],["Altera\xE7\xE3o de senha - Resolvido","Altera\xE7\xF5es nas configura\xE7\xF5es do Wi-Fi - FTTH",0,"$RF","solicitou a altera\xE7\xE3o da senha da rede Wi-Fi. Foi explicado que a senha \xE9 gerada aleatoriamente e composta por caracteres min\xFAsculos. Senha gerada e cliente com acesso","Altera\xE7\xF5es nas configura\xE7\xF5es do Wi-Fi - FTTH"],["Altera\xE7\xE3o de senha - Inativo","Altera\xE7\xF5es nas configura\xE7\xF5es do Wi-Fi - FTTH",0,"$RF","solicitou a altera\xE7\xE3o da senha da rede Wi-Fi. Foi explicado que a senha \xE9 gerada aleatoriamente e composta por caracteres min\xFAsculos. Senha gerada, por\xE9m, o cliente ficou sem interagir at\xE9 o encerramento do atendimento.","Altera\xE7\xF5es nas configura\xE7\xF5es do Wi-Fi - FTTH"],["Plano no cabo - Resolvido","Plano n\xE3o chega o contratado - FTTH",0,"$RR","informou estar enfrentando problemas de instabilidade, pois a velocidade do plano contratado n\xE3o est\xE1 sendo alcan\xE7ada na rede cabeada. Verificado o sinal \xF3ptico na sua PON est\xE1 dentro dos padr\xF5es. Procedemos \xE0 execu\xE7\xE3o dos procedimentos padr\xF5es, conforme documentados nos registros de eventos, e solicitamos alguns procedimentos manuais usuais, incluindo o rein\xEDcio do computador. Al\xE9m disso, verificamos a placa de rede \xE9 Gigabyte e o cabo de rede \xE9 CAT. 5E. Ap\xF3s essas verifica\xE7\xF5es, realizamos um teste adicional no veloc\xEDmetro, e agora a velocidade atingiu o contratado.","Plano n\xE3o chega o contratado - FTTH"],["Plano no cabo - Externo","Plano n\xE3o chega o contratado - FTTH",1,"$RR","informou estar enfrentando problemas de instabilidade, j\xE1 que a velocidade do plano contratado n\xE3o est\xE1 sendo alcan\xE7ada na rede cabeada. Verificado o sinal \xF3ptico de sua PON est\xE1 dentro dos padr\xF5es. Executamos os procedimentos padr\xF5es, conforme documentados nos registros de eventos, e solicitamos alguns procedimentos manuais usuais, incluindo o rein\xEDcio do computador. Al\xE9m disso, constatamos que a placa de rede \xE9 Gigabyte e o cabo de rede \xE9 CAT. 5E. Apesar dessas verifica\xE7\xF5es, o teste adicional no veloc\xEDmetro ainda indicou uma velocidade inferior \xE0 garantida. Diante disso, foi gerada uma Ordem de Servi\xE7o (O.S.) para efetuar uma inspe\xE7\xE3o direta no local.$AG","Plano n\xE3o chega o contratado"],["Plano no cabo - Ficou testando","Plano n\xE3o chega o contratado - FTTH",0,"$RR","informou estar enfrentando problemas de instabilidade, pois a velocidade do plano contratado n\xE3o est\xE1 sendo alcan\xE7ada na rede cabeada. Verificado o sinal \xF3ptico na sua PON est\xE1 dentro dos padr\xF5es. Procedemos \xE0 execu\xE7\xE3o dos procedimentos padr\xF5es, conforme documentados nos registros de eventos, e solicitamos alguns procedimentos manuais usuais, incluindo o rein\xEDcio do computador. Al\xE9m disso, verificamos a placa de rede \xE9 Gigabyte e o cabo de rede \xE9 CAT. 5E. Ap\xF3s essas verifica\xE7\xF5es, realizamos um teste adicional no veloc\xEDmetro, e agora a velocidade atingiu o contratado, por\xE9m, voltou a abaixar. Devido isso, o cliente ficou de continuar testando durante o restante do dia e caso continue persistido, ir\xE1 entrar em contato para enviarmos uma equipe para analisar.","Plano n\xE3o chega o contratado - FTTH"],["Plano no wi-fi - Ficou testando","Plano n\xE3o chega o contratado - FTTH",0,"$RR","relatou estar enfrentando problemas de instabilidade, pois a velocidade do plano contratado n\xE3o est\xE1 sendo alcan\xE7ada na rede sem fio. Verificamos que o sinal \xF3ptico de sua PON estava dentro dos padr\xF5es. Nesse contexto, explicamos sobre a garantia de entrega de velocidade apenas na rede cabeada e oferecemos um procedimento remoto para tentar melhorar, embora n\xE3o pud\xE9ssemos garantir o mesmo desempenho na rede sem fio. Procedemos \xE0 execu\xE7\xE3o dos procedimentos padr\xF5es, conforme documentados nos registros de eventos, e solicitamos alguns procedimentos manuais usuais, incluindo o rein\xEDcio do aparelho usado para testar. Apesar dessas verifica\xE7\xF5es, o teste no veloc\xEDmetro ainda indicou uma velocidade inferior \xE0 garantida. Diante dessa situa\xE7\xE3o, o cliente ficou de realizar o teste no cabo quando puder.","Plano n\xE3o chega o contratado - FTTH"],["Plano no wi-fi - externo","Plano n\xE3o chega o contratado - FTTH",1,"$RR","relatou enfrentar problemas de instabilidade, pois a velocidade do plano contratado n\xE3o est\xE1 sendo alcan\xE7ada na rede sem fio. Verificado o sinal \xF3ptico de sua PON estava dentro dos padr\xF5es. Nesse contexto, explicamos sobre a garantia de entrega de velocidade apenas na rede cabeada e oferecemos um procedimento remoto para tentar melhorar, embora n\xE3o pud\xE9ssemos garantir o mesmo desempenho na rede sem fio. Procedemos \xE0 execu\xE7\xE3o dos procedimentos padr\xF5es, conforme documentados nos registros de eventos, e solicitamos alguns procedimentos manuais usuais, incluindo o rein\xEDcio do aparelho usado para testar. Apesar dessas verifica\xE7\xF5es, o teste no veloc\xEDmetro ainda indicou uma velocidade inferior \xE0 garantida. Diante dessa situa\xE7\xE3o, o cliente solicitou a presen\xE7a de uma equipe no local, com um notebook e cabo de rede da Brisanet para uma inspe\xE7\xE3o direta e comprova\xE7\xE3o da entrega do plano. Foi gerada uma Ordem de Servi\xE7o (O.S.) para efetuar essa inspe\xE7\xE3o.$AG","Plano n\xE3o chega o contratado"],["Placa de rede FE","Plano n\xE3o chega o contratado - FTTH",0,"$RR","relatou estar enfrentando problemas de instabilidade, pois a velocidade do plano contratado n\xE3o est\xE1 sendo alcan\xE7ada na rede cabeada. Ap\xF3s verificar que o sinal \xF3ptico na sua PON est\xE1 dentro dos padr\xF5es, procedemos \xE0 execu\xE7\xE3o dos procedimentos padr\xF5es, conforme documentados nos registros de eventos, e solicitamos alguns procedimentos manuais usuais, incluindo o rein\xEDcio do computador. Ap\xF3s essas verifica\xE7\xF5es, realizamos um teste adicional no veloc\xEDmetro; no entanto, a velocidade continuou na mesma m\xE9dia de 90 Mbps. Verificamos que o cabo de rede \xE9 CAT. 5E e, ao examinar a placa de rede, identificamos que o problema est\xE1 sendo ocasionado pela placa de rede FE (/100). O cliente est\xE1 ciente dessa situa\xE7\xE3o.","Plano n\xE3o chega o contratado - FTTH"],["Placa de rede FE - externo","Plano n\xE3o chega o contratado - FTTH",1,"$RR","relatou enfrentar problemas de instabilidade, pois a velocidade do plano contratado n\xE3o est\xE1 sendo alcan\xE7ada na rede cabeada. Ap\xF3s verificar que o sinal \xF3ptico na sua PON est\xE1 dentro dos padr\xF5es, realizamos os procedimentos padr\xE3o, conforme documentados nos registros de eventos, e recomendamos alguns procedimentos manuais usuais, incluindo o rein\xEDcio do computador. Ap\xF3s essas verifica\xE7\xF5es, realizamos um teste adicional no veloc\xEDmetro; no entanto, a velocidade continuou na mesma m\xE9dia de 90 Mbps. Verificamos que o cabo de rede \xE9 CAT. 5E e, ao examinar a placa de rede, identificamos que o problema est\xE1 sendo ocasionado pela placa de rede FE (/100). O cliente est\xE1 ciente dessa situa\xE7\xE3o, mas deseja a visita de uma equipe para confirmar que est\xE1 recebendo o servi\xE7o contratado. Diante disso, geramos uma Ordem de Servi\xE7o (O.S.) para realizar uma inspe\xE7\xE3o presencial no local.$AG","Plano n\xE3o chega o contratado"],["Rota com sinal irregular","Rota com sinal irregular - FTTH",0,"$RF","relata interrup\xE7\xE3o do servi\xE7o de acesso \xE0 internet. Ap\xF3s an\xE1lise, constatou-se anomalia no sinal da PON. A rota foi verificada e apresenta falhas. O cliente foi informado sobre o prazo de 24 horas para a resolu\xE7\xE3o do problema, que est\xE1 relacionado \xE0 rota.","Rota com sinal irregular - FTTH"],["Transf\xEArencia para o setor cancelamento","Informa\xE7\xE3o cancelamento",0,"$RF","transferido para o setor de cancelamento. O cliente solicitou o cancelamento do servi\xE7o da brisanet e recusou qualquer tipo de tratativa.","Informa\xE7\xE3o cancelamento"],["Instala\xE7\xE3o Mal Sucedida","Instala\xE7\xE3o mal sucedida (sem acesso) - 7d",1,"Reclama\xE7\xE3o de instala\xE7\xE3o de servi\xE7o","Instala\xE7\xE3o recente com pend\xEAncia de sinal/alinhamento. Aberta prioridade para retorno t\xE9cnico.","Instala\xE7\xE3o mal sucedida (sem acesso) - 7d"],["Desconex\xE3o Chat - Telefone fixo","Desconex\xE3o Chat",0,"$RF","fez contato para relatar problema em seu telefone fixo. Durante o atendimento, ele ficou inativo durante todo o atendimento, resultando no encerramento autom\xE1tico devido \xE0 falta de atividade.","Desconex\xE3o Chat"],["Desconex\xE3o Chat - BrisaTV","Desconex\xE3o Chat",0,"$RF","fez contato para relatar problema em seu servi\xE7o de TV. Durante o atendimento, ele ficou inativo durante todo o atendimento, resultando no encerramento autom\xE1tico devido \xE0 falta de atividade.","Desconex\xE3o Chat"],["N\xE3o est\xE1 no local","Instabilidade na entrega do servi\xE7o",0,"$RF","entra em contato informando problema nos servi\xE7os da Brisanet, por\xE9m, durante a sondagem foi verificado que o mesmo n\xE3o est\xE1 na resid\xEAncia para verificar ou testar o servi\xE7o. O mesmo ficou de entrar em contato quando estiver no local.","Instabilidade na entrega do servi\xE7o"],["J\xE1 solucionado","Informa\xE7\xF5es do servi\xE7o",0,"$RF","comunica que no in\xEDcio do atendimento a quest\xE3o j\xE1 foi solucionada, tornando desnecess\xE1ria a continua\xE7\xE3o do suporte.","Informa\xE7\xF5es do servi\xE7o"],["Falta de cordialidade","Instabilidade na entrega do servi\xE7o",0,"$RF","reporta um problema nos servi\xE7os da brisanet. Entretanto, durante o atendimento, houve o uso de linguagem inadequada, o que me levou a encerrar a conversa.","Instabilidade na entrega do servi\xE7o"],["Em hor\xE1rio de expediente","Instabilidade na entrega do servi\xE7o",0,"$RF","entra em contato informando problema nos servi\xE7os da Brisanet, por\xE9m, durante a sondagem foi verificado que o mesmo est\xE1 em hor\xE1rio de expediente, e por isso n\xE3o podemos realizar a tratativa do problema. O mesmo ficou de entrar em contato quando estiver dispon\xEDvel.","Instabilidade na entrega do servi\xE7o"],["Urg\xEAncia de \xFAltima hora","Instabilidade na entrega do servi\xE7o",0,"$RF","comunica dificuldades com o servi\xE7o da brisanet. Durante a verifica\xE7\xE3o, constatou-se que o cliente n\xE3o estava em dispon\xEDvel para dar continuidade ao processo. Ele entrar\xE1 em contato quando estiver dispon\xEDvel.","Cabo da fibra rompido"],["Solicita\xE7\xE3o de cancelamento","Solicita\xE7\xE3o de cancelamento",0,"$RF","entrou em contato solicitando o cancelamento dos servi\xE7os Brisanet. Cliente ciente que o nosso setor de reten\xE7\xE3o entrar\xE1 em contato com a mesma.","Solicita\xE7\xE3o de cancelamento"],["Procedimento somente com o titular","Atendimento encerrado - N\xE3o \xE9 o titular",0,"$RF","solicita atendimento que envolve negocia\xE7\xE3o/altera\xE7\xE3o de dados do cadastro, Por quest\xF5es de seguran\xE7a dos dados pessoais do titular, informamos que s\xF3 podemos proceder ap\xF3s conversar diretamente com o titular do contrato.","Atendimento encerrado - N\xE3o \xE9 o titular"],["Comando CRM","Sem acesso",0,"$RR","Relata que est\xE1 sem acesso \xE0 internet. Verificamos o comando CRM no sistema e refor\xE7amos o prazo de 24 horas para a resolu\xE7\xE3o do problema. Ressaltamos que se trata do comando de ativa\xE7\xE3o do servi\xE7o.","Sem acesso"],["Ping na rede cabeada - Resolvido","Ping alto",0,"$RF","relatou problemas com alta lat\xEAncia (ping) ao jogar, mesmo utilizando uma conex\xE3o cabeada. Ap\xF3s confirmar as informa\xE7\xF5es do titular, foi feita uma reconfigura\xE7\xE3o da rede e o cliente foi orientado a reiniciar o roteador. A lat\xEAncia foi reduzida para 60 ms, ficando dentro da garantia da brisanet.","Cabo da fibra rompido"],["Ping na rede cabeada - Ficou testando","Ping alto",0,"$RR","relatou problemas com alta lat\xEAncia (ping) ao jogar, mesmo utilizando uma conex\xE3o cabeada. Ap\xF3s confirmar as informa\xE7\xF5es do titular, foi feita uma reconfigura\xE7\xE3o da rede e o cliente foi orientado a reiniciar o roteador. A lat\xEAncia foi reduzida para 60 ms, ficando dentro da garantia da brisanet. O cliente foi instru\xEDdo a monitorar o desempenho ao longo do dia e a entrar em contato novamente se o problema persistir, para que uma equipe t\xE9cnica especializada possa ser enviada.","Ping alto"],["Aus\xEAncia de confirma\xE7\xE3o da ID positiva","Aus\xEAncia de confirma\xE7\xE3o de dados",0,"$RF","n\xE3o procedeu com a confirma\xE7\xE3o dos dados correspondentes ao titular durante o decorrer do atendimento. Em raz\xE3o da seguran\xE7a do titular, o atendimento foi encerrado. Foi feita a requisi\xE7\xE3o dos dados em tr\xEAs ocasi\xF5es.","Aus\xEAncia de confirma\xE7\xE3o de dados"],["Cobran\xE7a de cancelamento","Informa\xE7\xE3o cancelamento",0,"$RF","entrou em contato para cobrar um retorno em rela\xE7\xE3o \xE0 sua solicita\xE7\xE3o de cancelamento. Ele forneceu o n\xFAmero de contato, e o prazo para o retorno foi devidamente comunicado. Ainda, foi esclarecido que ele pode encurtar o processo ao se dirigir diretamente ao setor competente por meio do n\xFAmero 0800 281 3017.","Informa\xE7\xE3o cancelamento"],["Valores do cancelamento","Informa\xE7\xE3o cancelamento",0,"$RF","busca informa\xE7\xF5es sobre os valores do contrato de fideliza\xE7\xE3o em caso de cancelamento. Identificamos um erro no sistema que impede a obten\xE7\xE3o dessas informa\xE7\xF5es. Encaminhamos o contato para o setor de reten\xE7\xE3o, capacitado para fornecer as informa\xE7\xF5es desejadas.","Informa\xE7\xE3o cancelamento"],["Manuten\xE7\xE3o no Revan","Sistema interno indispon\xEDvel",0,"$RF","fez contato, por\xE9m, foi explicado a ele que, naquele momento, o nosso sistema interno estava em manuten\xE7\xE3o e devido a isso, n\xE3o t\xEDnhamos como fazer nenhum procedimento remoto, sendo necess\xE1rio aguardar. Foi fornecido o prazo estimado pela URA para a regulariza\xE7\xE3o da situa\xE7\xE3o. O cliente foi informado e est\xE1 ciente dos detalhes.","Sistema interno indispon\xEDvel"],["Desconto por Rota Inoperante","Desconto de rota inoperante",0,"$RF","Entra em contato para solicitar desconto referente ao tempo que ficou sem acesso. Foi repassado que o desconto \xE9 fornecido somente pelo nosso setor financeiro, que pode ser contactado por liga\xE7\xE3o no n\xFAmero 0800 281 3017.","Informa\xE7\xF5es do servi\xE7o"],["Instabilidade geral em TP-links","Instabilidade TP-Link",0,"$RR","entra em contato informando instabilidade em seu roteador da TP-link. Verificado um problema geral onde n\xE3o \xE9 possivel realizar nenhuma tratatativa em roteadores da marca TP-link. Repassado prazo conforme a URA.","Instabilidade TP-Link"],["Problema geral na cidade","Instabilidade na entrega do servi\xE7o",0,"$RF","relata instabilidade nos servi\xE7os da brisanet, devido a um problema geral na cidade do cliente, n\xE3o foi poss\xEDvel realizar uma verifica\xE7\xE3o completa no momento. Cliente foi orientado a entrar em contato novamente quando o acesso estiver normalizado. Cliente ciente e de acordo.","Instabilidade na entrega do servi\xE7o"],["OLT em Manuten\xE7\xE3o","Problema na OLT",0,"$RF","Entrou em contato relatando falta de internet. Foi informado que h\xE1 uma manuten\xE7\xE3o em andamento na OLT que afeta o sinal do cliente e de v\xE1rios outros clientes. Foi repassado o prazo m\xE1ximo de normaliza\xE7\xE3o conforme a URA, por\xE9m o servi\xE7o pode voltar a qualquer momento. Cliente foi orientado a entrar em contato com o setor financeiro para solicitar desconto referente ao tempo sem acesso ap\xF3s a normaliza\xE7\xE3o. Cliente ciente e de acordo.","Informa\xE7\xF5es do servi\xE7o"],["Problema em roteador particular - T\xE9cnico particular","Suporte a equipamento particular",0,"$SA","relatou problemas com seu roteador particular, que estava sem acesso \xE0 internet. Ap\xF3s a verifica\xE7\xE3o, foi constatado que o roteador da Brisanet estava funcionando normalmente, mas o roteador espec\xEDfico continuava sem conex\xE3o. Foi recomendado que o cliente reinicie o roteador particular, logo ap\xF3s ser reconfigurado os equipamentos da brisanet. Como o acesso n\xE3o retornou, foi recomendado que verifique as configura\xE7\xF5es, conex\xF5es de cabos e poss\xEDveis interfer\xEAncias. Caso o problema persista, foi sugerido entrar em contato com o suporte t\xE9cnico do roteador para assist\xEAncia personalizada.","Suporte a equipamento particular"],["BrisaCliente - Primeiro acesso","BrisaCliente",0,"$RR","est\xE1 buscando assist\xEAncia para acessar o aplicativo BrisaCliente. Foi fornecido um guia com todos os passos","BrisaCliente"],["BrisaCliente - Primeiro acesso escritorio","BrisaCliente",0,"$RR","entrou em contato relatando que n\xE3o estava recebendo o SMS de confirma\xE7\xE3o para realizar o primeiro acesso ao aplicativo BrisaCliente. Foi solicitado um n\xFAmero que pudesse receber SMS, mas o problema persistiu. Diante da falta de outro n\xFAmero dispon\xEDvel com o mesmo DDD, foi informado que seria necess\xE1rio visitar uma loja ou escrit\xF3rio da empresa para que a configura\xE7\xE3o fosse realizada.","BrisaCliente"],["BrisaCliente - Recuperar a senha","BrisaCliente",0,"$RR","pediu ajuda para recuperar a senha do aplicativo BrisaCliente. Enviamos um passo a passo para gui\xE1-lo durante o processo de recupera\xE7\xE3o.","BrisaCliente"],["Globoplay - Primeiro acesso","Globoplay",0,"$RR","est\xE1 buscando assist\xEAncia para acessar o aplicativo Globoplay. Foi fornecido um guia com todos os passos","Globoplay"],["Globoplay - Suporte do servi\xE7o","Globoplay",0,"$RR","entrou em contato relatando um problema com o aplicativo GloboPlay na TV, mencionando que uma s\xE9rie que estava assistindo n\xE3o carregava h\xE1 duas semanas. Ap\xF3s realizar uma reconfigura\xE7\xE3o da rede e confirmar que a conex\xE3o estava funcionando corretamente, foi identificado que o problema estava no pr\xF3prio aplicativo da GloboPlay. O cliente foi orientado a entrar em contato com o suporte da GloboPlay atrav\xE9s dos n\xFAmeros 0800 881 8000 ou 4003 8000 para resolver o problema.","Globoplay"],["Netflix - Primeiro acesso","Netflix",0,"$RR","est\xE1 buscando assist\xEAncia para acessar o aplicativo Netflix. Foi fornecido um guia com todos os passos","Netflix"],["PON Piscando - GPON","PON piscando - FTTH",0,"$RF","Entra em contato informando que est\xE1 sem acesso, verificado que o LED PON est\xE1 piscando, dessa forma foi reconfigurado a ONU e o problema persistiu. Foi tentado mais uma vez e o problema ainda persiste. O problema foi repassado pela lideran\xE7a para o GPON verificar. Prazo de 24 horas. Cliente ciente do retorno.","PON Piscando"],["Altera\xE7\xE3o de c\xF4modo","Altera\xE7\xE3o de c\xF4modo",1,"$SA","fica ciente do prazo, h\xE1 quest\xF5es de valores: R$ 30,00 pela altera\xE7\xE3o; no caso de utiliza\xE7\xE3o de novo cabo FTTH/RJ45, s\xE3o mais R$1,30 por metro utilizado. Confirmado CPF e endere\xE7o. PS: levar termo de compromisso para ser assinado pelo cliente ou respons\xE1vel. E anexar imagem ao chamado, tamb\xE9m como do lugar onde ficou o equipamento.","Altera\xE7\xE3o de c\xF4modo"],["Revis\xE3o de equipamento","Revis\xE3o de Equipamento",1,"$RR","entrou em contato via Whatsapp informando estar com instabilidade e problemas de conex\xE3o. Informado ao cliente sobre as instabilidades da rede WI-FI, sobre o alcance da rede WI-FI e testes via WI-FI. Canais foram alterados, sinal e IP normal, ONU Ativada/reconfigurada. O Cliente informa que a sua conex\xE3o n\xE3o melhorou, por gentileza, passar, verificar se existe algum problema l\xF3gico na ONU do cliente, caso seja constatado, por gentileza, entrar em contato com o suporte regional e realizar a troca da ONU, se autorizado, por outra de mesmo modelo a fim de verificar melhorias na conex\xE3o e refor\xE7ar tamb\xE9m as informa\xE7\xF5es supracitadas. PS. Caso alguma informa\xE7\xE3o sobre servi\xE7o adicional (troca de ONU, cabo de rede, altera\xE7\xE3o de parede ou c\xF4modo) for informada ao cliente, por gentileza, registrar no chamado.","Revis\xE3o de Equipamento"],["Configura\xE7\xE3o Estruturada de Rede Interna","Configura\xE7\xE3o Estruturada de Rede Interna",1,"$SA","Entrou em contato solicitando a visita de um t\xE9cnico para configurar e instalar um aparelho particular na sua resid\xEAncia, dessa forma foi aberto uma O.S. Por gentileza, passar no local realizar a configura\xE7\xE3o da sua rede interna, o cliente est\xE1 ciente que o tal procedimento \xE9 gerado uma taxa de R$ 90,00 reais, podendo ser dividido em at\xE9 3X. onde o cliente tem direito a 20 metros de cabo de rede, caso seja utilizado metragem de cabos superior a 20 metros ser\xE1 cobrado mais R$ 1,30 por metro. CPF confirmado. Cliente ciente do prazo e no aguardo.","Configura\xE7\xE3o Estruturada de Rede Interna"],["Hiberna\xE7\xE3o chat","Hiberna\xE7\xE3o chat",0,"$RF","O cliente permaneceu inativo por 10 minutos, mesmo ap\xF3s o envio de alertas de hiberna\xE7\xE3o. Diante da continuidade da inatividade, o mesmo foi realocado para a fila de hiberna\xE7\xE3o.","$SA"],["Area interditada sem retorno","Rota Inoperante",0,"$RF","O cliente relatou indisponibilidade do servi\xE7o de internet h\xE1 quatro dias. Foi verificado em sistema que a regi\xE3o do cliente est\xE1 classificada como \xE1rea de risco, o que impede a realiza\xE7\xE3o de manuten\xE7\xF5es pela operadora no momento. O atendimento foi finalizado ap\xF3s o esclarecimento sobre as restri\xE7\xF5es operacionais na \xE1rea.","$SA"],["Fun\xE7\xE3o - WPS","Informa\xE7\xE3o T\xE9cnica",0,"$RF","entrou em contato solicitando conex\xE3o via WPS em sua impressora, foi informado que a fun\xE7\xE3o \xE9 bloqueada de f\xE1brica nos equipamentos da brisanet, o cliente ficou ciente de que s\xF3 \xE9 poss\xEDvel utilizar essa fun\xE7\xE3o em um roteador particular.","Informa\xE7\xE3o T\xE9cnica"],["Torre inoperante - FWA","Torre inoperante - FWA",0,"$RF","Cliente entrou em contato informando falta de acesso \xE0 internet. Verificado em sistema e constatado que a torre est\xE1 fora do ar. Foi informado ao cliente o prazo de 12 horas para normaliza\xE7\xE3o. Cliente ciente e aguarda retorno.","$SA"],["LENTID\xC3O - Resolvido FWA","Lentid\xE3o - FWA",0,"$RF","Cliente relatou lentid\xE3o no FWA durante o uso. Ap\xF3s a verifica\xE7\xE3o inicial, foram realizados os procedimentos informados no treinamento, incluindo ajustes no equipamento e testes de conectividade. Com isso, foi poss\xEDvel restabelecer o acesso, e a lentid\xE3o foi resolvida. O cliente confirmou que o servi\xE7o voltou a operar normalmente, sem mais sinais de instabilidade.","$SA"],["CPE sem sinal - FWA","CPE sem sinal - FWA",1,"$RF","Informou estar sem acesso. Verificado equipamento(s) ligado(s) e led vermelho piscando; cliente informou que ningu\xE9m mexeu no(s) equipamento(s). Verificado na planilha de acompanhamento 5G. Aberto O.S para verifica\xE7\xE3o no local.","CPE sem sinal - FWA"],["LED 5G - APAGADO - Resolvido (FWA)","CPE sem sinal - FWA",0,"$RF","entrou em contato informando que o LED 5G estava apagado. Foi verificado que o problema estava relacionado ao cart\xE3o SIM n\xE3o conectado. O cliente foi orientado a verificar se o chip estava corretamente inserido e reiniciar o aparelho. Ap\xF3s seguir as instru\xE7\xF5es, o acesso foi normalizado e o LED 5G acendeu.","CPE sem sinal - FWA"],["LED 5G - APAGADO - Aguarda o prazo (FWA)","CPE sem sinal - FWA",0,"$RF","relatou que o LED 5G estava apagado. Ao verificar a conex\xE3o do cart\xE3o SIM e reiniciar o aparelho, o problema persistiu. Foi consultada a lideran\xE7a e identificado que o problema est\xE1 relacionado ao r\xE1dio. Foi repassado o prazo para normaliza\xE7\xE3o do servi\xE7o e o cliente foi informado sobre a previs\xE3o de resolu\xE7\xE3o.","CPE sem sinal - FWA"],["LED 5G - APAGADO - Externo (FWA)","CPE sem sinal - FWA",1,"$RF","informou que o LED 5G estava apagado. Verificado que o cart\xE3o SIM estava conectado e o aparelho foi reiniciado, mas o problema persistiu. Ap\xF3s verificar que o sistema estava normal e o problema continuava, foi aberta uma Ordem de Servi\xE7o para verifica\xE7\xE3o no local. Ser\xE1 realizado contato com o cliente para agendamento da visita t\xE9cnica.","CPE sem sinal - FWA"],["LED 5G - Pis Vermelho - Resolvio (FWA)","CPE sem sinal - FWA",0,"$RF","informou que o LED estava piscando vermelho, indicando aus\xEAncia de rede. Foi confirmado com a lideran\xE7a que o status do servidor estava normal (up). Ap\xF3s verificar a situa\xE7\xE3o e realizar os procedimentos necess\xE1rios, o problema foi resolvido e a conex\xE3o foi restabelecida.","CPE sem sinal - FWA"],["LED 5G - Pis Vermelho - Externo (FWA)","CPE sem sinal - FWA",1,"$RF","relatou que o LED estava piscando vermelho, sinalizando falta de rede. Confirmado com a lideran\xE7a que o status do servidor estava normal (up). Como o problema persistiu ap\xF3s a verifica\xE7\xE3o interna, foi aberto um chamado externo para a solu\xE7\xE3o do problema. Cliente ciente do chamado e aguarda resolu\xE7\xE3o.","CPE sem sinal - FWA"],["LENTID\xC3O - Resolvido (FWA)","Lentid\xE3o - FWA",0,"$RF","relatou lentid\xE3o no FWA durante o uso. Ap\xF3s a verifica\xE7\xE3o inicial, foram realizados os procedimentos informados no treinamento, incluindo ajustes no equipamento e testes de conectividade. Com isso, foi poss\xEDvel restabelecer o acesso, e a lentid\xE3o foi resolvida. O cliente confirmou que o servi\xE7o voltou a operar normalmente, sem mais sinais de instabilidade.","Lentid\xE3o - FWA"],["Lentid\xE3o - Externo (FWA)","Lentid\xE3o - FWA",1,"$RF","relatou problema de conectividade no FWA. Ap\xF3s verifica\xE7\xE3o detalhada no sistema, constatou-se que o problema est\xE1 relacionado \xE0 conex\xE3o externa, fora do controle local. O cliente foi informado que, no momento, n\xE3o \xE9 poss\xEDvel realizar interven\xE7\xF5es internas e que a quest\xE3o envolve apenas a infraestrutura externa. Aguardando a\xE7\xF5es necess\xE1rias pela equipe respons\xE1vel por essa \xE1rea.","Lentid\xE3o - FWA"],["Personaliza\xE7\xE3o de rede - Nome e Senha (FWA)","Altera\xE7\xF5es nas configura\xE7\xF5es do Wi-Fi - FWA",0,"$RF","entrou em contato solicitando a personaliza\xE7\xE3o do nome da rede e da senha do WIFI FWA. As configura\xE7\xF5es foram ajustadas conforme solicitado. O cliente foi informado sobre a altera\xE7\xE3o e confirmou que a conex\xE3o est\xE1 funcionando corretamente.","Altera\xE7\xF5es nas configura\xE7\xF5es do Wi-Fi - FWA"],["Personaliza\xE7\xE3o de rede - Nome (FWA)","Altera\xE7\xF5es nas configura\xE7\xF5es do Wi-Fi - FWA",0,"$RF","solicitou a personaliza\xE7\xE3o apenas do nome da rede WIFI FWA. O ajuste foi realizado conforme a solicita\xE7\xE3o, e o cliente foi informado sobre a mudan\xE7a. Ap\xF3s verificar a conex\xE3o, o cliente confirmou que est\xE1 tudo OK e que a rede est\xE1 funcionando perfeitamente.","Altera\xE7\xF5es nas configura\xE7\xF5es do Wi-Fi - FWA"],["Personaliza\xE7\xE3o de rede - Senha (FWA)","Altera\xE7\xF5es nas configura\xE7\xF5es do Wi-Fi - FWA",0,"$RF","entrou em contato solicitando a personaliza\xE7\xE3o do nome da rede e da senha do WIFI FWA. As configurações foram ajustadas conforme solicitado. O cliente foi informado sobre a alteração e confirmou que a conexão está funcionando corretamente.","Altera\xE7\xF5es nas configurações do Wi-Fi - FWA"],["Cobran\xE7a de reparo (Dentro do prazo)","COBRAN\xC7A DE REPARO DENTRO DO PRAZO",0,"$RF","Entrou em contato cobrando atendimento, visto o mesmo encontrar-se dentro do prazo, informado e refor\xE7ado prazo ao cliente, o mesmo ciente. Por gentileza, verificar e priorizar..","COBRAN\xC7A DE REPARO DENTRO DO PRAZO"],["spam","Solicita\xE7\xE3o de dados",0,"Sem servi\xE7o","Atendimento finalizado por spam, cliente encaminhou in\xFAmeras vezes a mesma mensagem tornando invi\xE1vel prosseguir com o atendimento.",""],["los com valor","",0,"L","",""],["Nova mensagem","",0,"Sem servi\xE7o","",""],["Suspeita de LOS com valor","Suspeita de LOS",1,"$RF","Cliente informa haver um LED vermelho piscando. Questionado se LED LOS estava ativa, se havia ocorrido acidentes ou alguma remo\xE7\xE3o de equipamento e se havia tido quedas de energias recentes, o cliente informou que tem uma luz vermelha acesa e n\xE3o para as outras perguntas. Verificada que a rota est\xE1 normal. Aberto O.S. para verifica\xE7\xE3o no local. Cliente ciente do valor de R$20,00 pelo envio da equipe e pode ser gerado mais valores. Realizar contato para agendamento.","los"],["COBRAN\xC7A DE REPARO FORA DO PRAZO","COBRAN\xC7A DE REPARO FORA DO PRAZO",0,"Sem servi\xE7o","Cliente entrou em contato informando que a visita t\xE9cnica permanece pendente e j\xE1 se encontra fora do prazo previsto. Realizada cobran\xE7a junto \xE0 equipe respons\xE1vel, solicitando prioridade no atendimento devido ao atraso. Cliente orientado a aguardar, sendo informado de que a solicita\xE7\xE3o est\xE1 sendo acompanhada at\xE9 a conclus\xE3o da visita.",""]];var raw=rawD.map(function(r){var s=r[3],m=r[4];for(var k in D){s=s.split(k).join(D[k]);m=m.split(k).join(D[k]);}return[r[0],r[1],!!r[2],s,m,r[5]];});var base=raw.map(function(r,i){return{id:i,titulo:r[0],etiqueta:r[1],externo:r[2],servico:r[3],mensagem:r[4],etiqueta_externo:r[5]};});var thmStyles={black_red:{bg:'#08060f',border:'#dc2626',text:'#f1f5f9',inBg:'#1a0505',inBdr:'#991b1b',btnBg:'#0284c7',headTxt:'#fca5a5',glow:'rgba(220,38,38,0.45)',btnBorder:'#dc2626'},light_basic:{bg:'#ffffff',border:'#cbd5e1',text:'#0f172a',inBg:'#f8fafc',inBdr:'#94a3b8',btnBg:'#2563eb',headTxt:'#1e293b',glow:'rgba(148,163,184,0.3)',btnBorder:'#2563eb'},dark_basic:{bg:'#121212',border:'#333333',text:'#e0e0e0',inBg:'#1e1e1e',inBdr:'#444444',btnBg:'#3b82f6',headTxt:'#f3f4f6',glow:'rgba(0,0,0,0.5)',btnBorder:'#555555'},white_blue:{bg:'#ffffff',border:'#0284c7',text:'#0f172a',inBg:'#f0f9ff',inBdr:'#0284c7',btnBg:'#0284c7',headTxt:'#0369a1',glow:'rgba(2,132,199,0.3)',btnBorder:'#0284c7'},purple_black:{bg:'#090514',border:'#7e22ce',text:'#e9d5ff',inBg:'#1e1035',inBdr:'#6b21a8',btnBg:'#9333ea',headTxt:'#d8b4fe',glow:'rgba(126,34,206,0.5)',btnBorder:'#a855f7'},green_yellow:{bg:'#022c22',border:'#eab308',text:'#fef08a',inBg:'#064e3b',inBdr:'#854d0e',btnBg:'#15803d',headTxt:'#fef08a',glow:'rgba(234,179,8,0.4)',btnBorder:'#eab308'},black_blue:{bg:'#030712',border:'#0284c7',text:'#e0f2fe',inBg:'#0f172a',inBdr:'#0369a1',btnBg:'#0284c7',headTxt:'#38bdf8',glow:'rgba(2,132,199,0.5)',btnBorder:'#38bdf8'},black_yellow_rays:{bg:'#0c0a09',border:'#facc15',text:'#fef08a',inBg:'#1c1917',inBdr:'#ca8a04',btnBg:'#ca8a04',headTxt:'#fef08a',glow:'rgba(250,204,21,0.6)',btnBorder:'#facc15'},orange_5g:{bg:'#431407',border:'#f97316',text:'#ffffff',inBg:'#7c2d12',inBdr:'#c2410c',btnBg:'#ea580c',headTxt:'#ffedd5',glow:'rgba(249,115,22,0.5)',btnBorder:'#fdba74'},custom:{bg:savedBg,border:savedBdr,text:'#ffffff',inBg:'#111827',inBdr:savedBdr,btnBg:savedBdr,headTxt:'#ffffff',glow:savedBdr,btnBorder:savedBdr}};var iconSVGs={sol:'<svg viewBox="0 0 24 24" class="hud-icon" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>',lua:'<svg viewBox="0 0 24 24" class="hud-icon" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>',mar:'<svg viewBox="0 0 24 24" class="hud-icon" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12c2.5-3 5-3 7.5 0s5 3 7.5 0 5-3 7-0.5"/><path d="M2 17c2.5-3 5-3 7.5 0s5 3 7.5 0 5-3 7-0.5"/></svg>',estrelas:'<svg viewBox="0 0 24 24" class="hud-icon" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>',nuvem:'<svg viewBox="0 0 24 24" class="hud-icon" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/></svg>',akatsuki:'<svg viewBox="0 0 100 100" class="hud-icon" style="background:#000;border-radius:50%;"><path d="M25 65 Q 15 60, 20 50 Q 25 40, 35 40 Q 40 25, 55 30 Q 70 30, 75 45 Q 85 50, 80 65 Q 75 75, 60 70 L 40 70 Q 30 75, 25 65 Z" fill="#dc2626" stroke="#ffffff" stroke-width="3"/></svg>'};function applyLiveStyle(tk,ik,fk,tc,cb,cbd){ls.setItem('y_hud_theme',tk);ls.setItem('y_hud_icon',ik);ls.setItem('y_hud_font',fk);if(tc)ls.setItem('y_hud_tclr',tc);if(cb)ls.setItem('y_hud_c_bg',cb);if(cbd)ls.setItem('y_hud_c_bdr',cbd);var cT=thmStyles[tk]||thmStyles.black_red;if(tk==='custom'){cT.bg=cb||savedBg;cT.border=cbd||savedBdr;cT.inBdr=cbd||savedBdr;cT.btnBg=cbd||savedBdr;cT.btnBorder=cbd||savedBdr;cT.glow=cbd||savedBdr;}var cFont=fontFamilies[fk]||fontFamilies.cyber,cSize=fontSizes[fk]||fontSizes.cyber,fTxt=tc||ls.getItem('y_hud_tclr')||cT.text,f=d.getElementById('m-custom-font');if(f)f.href=fontLinks[fk]||fontLinks.cyber;var sTag=d.getElementById('m-yoda-circuit-hud');if(sTag){sTag.innerHTML=`#m-ui{--bg:${cT.bg};--border:${cT.border};--text:${fTxt};--inBg:${cT.inBg};--inBdr:${cT.inBdr};--btnBg:${cT.btnBg};--headTxt:${cT.headTxt};--glow:${cT.glow};--btnBorder:${cT.btnBorder};--fFamily:${cFont};--fSize:${cSize};position:fixed;bottom:80px;right:20px;width:570px;height:500px;background-color:var(--bg);border:2px solid var(--border);border-radius:8px;z-index:2147483647;font-family:var(--fFamily);font-size:var(--fSize);box-shadow:0 0 25px var(--glow);color:var(--text);box-sizing:border-box;overflow:hidden}#m-sidebar{width:135px;background:var(--bg);border-right:2px solid var(--border);display:flex;flex-direction:column;padding:10px 0}.side-item{padding:10px 12px;cursor:pointer;color:var(--text);font-weight:700;font-size:calc(var(--fSize) - 1px);border-left:3px solid transparent;transition:.2s;display:flex;align-items:center;gap:8px}.side-item:hover{background:var(--inBg);border-left-color:var(--glow)}.side-item.active{background:var(--inBg);border-left-color:var(--btnBorder);color:var(--headTxt)}#m-content-area{flex:1;background:var(--inBg);position:relative;display:flex;flex-direction:column}#m-head{display:flex;justify-content:space-between;font-weight:700;color:var(--headTxt);padding:10px 14px;border-bottom:2px solid var(--border);background:var(--bg)}.content-panel{flex:1;overflow-y:auto;overflow-x:hidden;padding:12px}.content-panel::-webkit-scrollbar{width:6px}.content-panel::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}.dash-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}.dash-card{background:var(--bg);border:1px solid var(--inBdr);border-radius:6px;padding:10px;box-shadow:0 2px 8px rgba(0,0,0,.2)}.dash-card-title{font-size:calc(var(--fSize) - 1px);color:var(--headTxt);font-weight:700;margin-bottom:8px;border-bottom:1px solid var(--inBdr);padding-bottom:4px;display:flex;justify-content:space-between}.dash-val{font-size:var(--fSize);color:var(--text)}#m-btn{--bg:${cT.bg};--btnBorder:${cT.btnBorder};--glow:${cT.glow};position:fixed;bottom:20px;right:20px;z-index:2147483647;width:60px;height:60px;background:var(--bg);border:2px solid var(--btnBorder);border-radius:50%;cursor:pointer;box-shadow:0 0 15px var(--glow);display:flex;align-items:center;justify-content:center;transition:.3s;padding:6px;color:${cT.btnBorder}}#m-btn:hover{box-shadow:0 0 25px var(--glow);transform:scale(1.05)}#m-ui input:not([type="radio"]):not([type="checkbox"]),#m-ui textarea,#m-ui select{width:100%;margin:4px 0 8px;padding:7px;background:var(--inBg);color:var(--text);border:1px solid var(--inBdr);border-radius:4px;outline:0;font-family:inherit;font-size:var(--fSize);box-sizing:border-box}#m-ui input:focus,#m-ui textarea:focus,#m-ui select:focus{border-color:var(--border);box-shadow:0 0 8px var(--glow)}.seg{display:flex;border:1px solid var(--inBdr);border-radius:4px;overflow:hidden;margin-bottom:8px}.seg label{flex:1;text-align:center;padding:7px;margin:0;cursor:pointer;color:var(--text);font-size:calc(var(--fSize) - 1px);background:var(--inBg);text-transform:uppercase;transition:.2s}.seg input[type="radio"]{display:none}.seg input[type="radio"]:checked+label{background:var(--border);color:#fff;font-weight:700}.tw{display:flex;align-items:center;gap:6px;font-size:calc(var(--fSize) - 1px);color:var(--headTxt);text-transform:uppercase}.tg{position:relative;width:28px;height:16px;background:var(--inBg);border:1px solid var(--inBdr);border-radius:8px;cursor:pointer;margin:0;transition:.2s}.tg::after{content:"";position:absolute;top:2px;left:2px;width:10px;height:10px;background:var(--border);border-radius:50%;transition:.2s}input[type="checkbox"]:checked+.tg{background:var(--border)}input[type="checkbox"]:checked+.tg::after{left:14px;background:#fff}input[type="checkbox"]{display:none}#m-go,.dash-btn{width:100%;background:var(--btnBg);color:#fff;border:none;border-radius:4px;padding:8px;font-weight:700;font-size:calc(var(--fSize) + 1px);cursor:pointer;text-transform:uppercase;box-shadow:0 0 12px var(--glow);margin-top:4px;transition:.2s}#m-go:hover,.dash-btn:hover{filter:brightness(1.2)}.hud-icon{width:70%;height:70%}.ia-btn{background:var(--btnBg)!important;color:#fff!important;font-size:calc(var(--fSize) - 1px)!important;padding:8px!important;margin:0!important;border:1px solid var(--btnBg)!important;width:100%;cursor:pointer;border-radius:4px;font-weight:700;transition:.2s}.ia-btn:hover{filter:brightness(1.2)}.util-btn{flex:1;margin:0;background:var(--inBg)!important;color:var(--text)!important;border:1px solid var(--inBdr)!important;font-size:calc(var(--fSize) - 1px)!important;padding:8px!important;cursor:pointer;border-radius:4px;font-weight:700;transition:.2s}.util-btn:hover{border-color:var(--btnBg)!important;color:var(--btnBg)!important}.cfg-sel{font-size:calc(var(--fSize) - 2px)!important;padding:3px!important;margin:0!important;width:100%!important;display:block;cursor:pointer;background:var(--inBg);color:var(--text);border:1px solid var(--inBdr);margin-bottom:4px!important}#tag-display{font-size:calc(var(--fSize) - 2px);color:var(--text);background:var(--bg);border:1px solid var(--inBdr);padding:6px;border-radius:4px;margin-bottom:6px;text-align:center}#m-iframe-modal{position:fixed;top:5vh;left:10vw;width:80vw;height:90vh;background:var(--bg);border:2px solid var(--border);border-radius:8px;z-index:2147483647;box-shadow:0 0 30px var(--glow);flex-direction:column;overflow:hidden}#ghostbu-board{display:grid;background:var(--bg);border:2px solid var(--border);border-radius:6px;padding:3px;gap:2px;box-sizing:border-box;user-select:none;margin:0 auto}.gb-cell{display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;cursor:pointer;border-radius:3px;transition:background-color .15s,transform .05s}.gb-cell:active{transform:scale(.94)}.gb-cell.has-x{color:#94a3b8;font-size:13px}.gb-cell.has-ghost{animation:gb-pop .2s ease-out}.gb-cell.invalid{box-shadow:inset 0 0 0 2px #ef4444!important}@keyframes gb-pop{0%{transform:scale(0)}80%{transform:scale(1.2)}100%{transform:scale(1)}}.gb-nav-btn{background:var(--bg);border:1px solid var(--inBdr);color:var(--text);padding:4px 8px;border-radius:4px;font-size:10px;font-weight:700;cursor:pointer;transition:.2s}.gb-nav-btn:hover{border-color:var(--btnBorder)}.gb-nav-btn:disabled{opacity:.4;cursor:not-allowed;border-color:transparent!important}#gb-toast{position:absolute;top:45px;left:50%;transform:translateX(-50%);background:#10b981;color:#fff;padding:6px 14px;border-radius:20px;font-size:11px;font-weight:700;box-shadow:0 4px 15px rgba(0,0,0,.4);display:none;z-index:10;animation:gb-pop .3s ease-out}`;if(sTag.innerHTML==='')sTag.appendChild(document.createTextNode(sTag.textContent));}var btn=d.getElementById('m-btn');if(btn)btn.innerHTML=iconSVGs[ik]||iconSVGs.akatsuki;}var s=d.createElement('style');s.id='m-yoda-circuit-hud';d.head.appendChild(s);var b=d.createElement('div');b.id='m-btn';b.className='m-float-btn';b.style.bottom='20px';d.body.appendChild(b);var im=d.createElement('div');im.id='m-iframe-modal';im.style.display='none';im.innerHTML='<div style="display:flex;justify-content:space-between;padding:12px;background:var(--inBg);border-bottom:2px solid var(--border);color:var(--headTxt);font-weight:bold;font-size:14px;"><span id="m-iframe-title">MINI PAGE</span><span id="m-iframe-close" style="cursor:pointer;background:#7f1d1d;padding:2px 8px;border-radius:4px;color:#fff;">FECHAR [X]</span></div><iframe id="m-iframe-src" style="flex:1;width:100%;height:100%;border:none;background:#fff;"></iframe>';d.body.appendChild(im);d.getElementById('m-iframe-close').onclick=function(){im.style.display='none';d.getElementById('m-iframe-src').src='';};function openIframe(url,t){d.getElementById('m-iframe-title').innerText=t;d.getElementById('m-iframe-src').src=url;im.style.display='flex';}window.addEventListener('keydown',function(e){if(e.key==='F3'){e.preventDefault();e.stopPropagation();openIframe('https://saski.brisanet.net.br/','SASKI (F3)');}else if(e.key==='F4'){e.preventDefault();e.stopPropagation();openIframe('https://pastor.brisanet.net.br/#/wookie/home','PASTOR (F4)');}},true);var p=d.createElement('div');p.id='m-ui';p.style.display='none';p.innerHTML='<div id="m-sidebar"><div style="text-align:center;margin-bottom:12px;font-weight:bold;color:var(--headTxt);">DASHBOARD</div><div id="side-reg" class="side-item active">📝 Registro</div><div id="side-net" class="side-item">📡 Gerência</div><div id="side-gb" class="side-item">👻 Ghostbu</div><div id="side-game" class="side-item">🎮 Jogo SOS</div><div id="side-ai" class="side-item">🤖 IA Groq</div><div id="side-vis" class="side-item">🎨 Visual</div></div><div id="m-content-area"><div id="m-head"><span id="m-title-text">Registro de Atendimento</span><span id="m-x" style="cursor:pointer;color:var(--headTxt)">[X]</span></div><div id="content-main" class="content-panel"><div class="seg"><input type="radio" name="m-ct" id="ct-tit" value="titular" checked><label for="ct-tit">Titular</label><input type="radio" name="m-ct" id="ct-ter" value="terceiro"><label for="ct-ter">Terceiro</label></div><input id="m-ter" placeholder="Nome do Terceiro..." style="display:none"><div class="seg"><input type="radio" name="m-tc" id="tc-all" value="all" checked><label for="tc-all">Todos</label><input type="radio" name="m-tc" id="tc-ftth" value="ftth"><label for="tc-ftth">FTTH</label><input type="radio" name="m-tc" id="tc-fwa" value="fwa"><label for="tc-fwa">FWA</label></div><input id="m-sr" placeholder="🔍 Buscar motivo..."><select id="m-sm"></select><textarea id="m-msg" rows="4" placeholder="Mensagem de registro..."></textarea><div id="tag-display">🏷️ Interna: Nenhuma<br>🚀 Externa: Não se aplica</div><div style="display:flex;justify-content:space-between;align-items:center;background:var(--inBg);padding:8px;border:1px solid var(--inBdr);border-radius:4px;margin-bottom:8px"><div class="tw">Ext<input type="checkbox" id="m-ext"><label class="tg" for="m-ext"></label></div><div class="tw">Agd<input type="checkbox" id="m-ag"><label class="tg" for="m-ag"></label></div></div><textarea id="m-obs" rows="1" placeholder="Observação (opcional)..."></textarea><div style="display:flex;gap:6px;margin-bottom:6px;"><button type="button" id="m-saski" class="util-btn">SASKI [F3]</button><button type="button" id="m-wookie" class="util-btn">PASTOR [F4]</button></div><button id="m-go">FINALIZAR E REGISTRAR</button></div><div id="content-net" class="content-panel" style="display:none;"><div class="dash-grid"><div class="dash-card"><div class="dash-card-title">🔌 Estado Equipamento <span style="cursor:pointer" id="btn-read-status" title="Atualizar Status">🔄</span></div><div style="font-size:10px;color:var(--headTxt);">Status:</div><div class="dash-val" id="dash-st">Desconhecido</div><div style="font-size:10px;color:var(--headTxt);margin-top:6px;">Última Resposta:</div><div class="dash-val" id="dash-lv">--/--/---- --:--</div></div><div class="dash-card"><div class="dash-card-title">📡 Diagnósticos</div><button type="button" class="dash-btn" id="btn-read-sinal" style="padding:6px;font-size:10px;margin-bottom:6px;">CONSULTAR SINAL</button><button type="button" class="dash-btn" id="btn-check-gerencia" style="padding:6px;font-size:10px;background:var(--inBg);border:1px solid var(--inBdr);color:var(--text);">VERIFICAR GERÊNCIA</button></div></div><div class="dash-card" style="margin-bottom:10px;"><div class="dash-card-title"><span>🌐 Configuração Wi-Fi (Atual vs Novo)</span><span id="btn-sync-current-wifi" style="cursor:pointer;color:var(--btnBorder);" title="Ler Valores da Tela">🔄 Ler Atuais</span></div><div style="font-size:9.5px;margin-bottom:6px;color:var(--headTxt);"><div>Atuais 2.4GHz: <b id="lbl-curr-24" style="color:var(--text)">Não lido</b></div><div>Atuais 5.8GHz: <b id="lbl-curr-58" style="color:var(--text)">Não lido</b></div></div><div class="dash-grid" style="margin:0;"><div><span style="font-size:10px;">Novo 2.4G Banda:</span><select id="w-24-b" class="cfg-sel"><option value="">-- Manter --</option><option>20MHz</option><option>40MHz</option></select></div><div><span style="font-size:10px;">Novo 2.4G Canal:</span><select id="w-24-c" class="cfg-sel"><option value="">-- Manter --</option><option>1</option><option>6</option><option>11</option></select></div><div><span style="font-size:10px;">Novo 5.8G Banda:</span><select id="w-58-b" class="cfg-sel"><option value="">-- Manter --</option><option>20MHz</option><option>40MHz</option><option>80MHz</option></select></div><div><span style="font-size:10px;">Novo 5.8G Canal:</span><select id="w-58-c" class="cfg-sel"><option value="">-- Manter --</option><option>36</option><option>40</option><option>44</option><option>48</option></select></div></div><div style="margin-top:8px;"><button type="button" class="dash-btn" id="btn-save-wifi" style="padding:8px;font-size:10px;">💾 EXECUTAR: EDITAR ➔ ALTERAR ➔ SALVAR</button></div></div></div><div id="content-gb" class="content-panel" style="display:none;"><div id="gb-toast">FASE CONCLUÍDA! 🎉</div><div style="display:flex;align-items:center;justify-content:space-between;width:100%;margin-bottom:4px"><div id="gb-lives" style="font-size:14px;letter-spacing:2px;">❤️❤️❤️</div><div style="text-align:right"><span style="font-weight:bold;color:var(--headTxt);font-size:12px" id="gb-lvl-title">Nível 1 / 300</span><span id="gb-max-unlocked" style="display:block;font-size:9px;color:var(--text)">Desbloqueado: Nível 1</span></div></div><div style="display:flex;align-items:center;justify-content:space-between;width:100%;margin-bottom:6px"><select id="gb-sel-diff" class="cfg-sel" style="width:130px;margin:0!important;padding:2px 4px!important;"><option value="facil">Fácil (5x5)</option><option value="medio">Médio (7x7)</option><option value="dificil">Difícil (8x8)</option><option value="expert">Especialista (9x9)</option></select><div style="display:flex;gap:4px;"><button type="button" id="gb-prev" class="gb-nav-btn">◀ Ant</button><button type="button" id="gb-next" class="gb-nav-btn" disabled>Próx ▶</button></div></div><div id="ghostbu-board-wrapper" style="width:100%;display:flex;justify-content:center;align-items:center;margin-bottom:6px;"><div id="ghostbu-board"></div></div><div style="display:flex;gap:6px;"><button type="button" id="gb-clear" class="gb-nav-btn" style="flex:1">REINICIAR</button><button type="button" id="gb-autox" class="gb-nav-btn" style="flex:1;color:#4ade80">AUTO-X: ON</button></div></div><div id="content-game" class="content-panel" style="display:none; text-align:center;"><div style="font-weight:bold; margin-bottom:4px;">NÍVEL: <span id="g-level">1</span> | PROGRESSO: <span id="g-prog">0</span>%</div><canvas id="gameCanvas" width="370" height="150" style="background:#87CEEB; border-radius:4px; display:block; margin:0 auto; cursor:pointer;"></canvas><div style="font-size: 11px; margin-top: 15px; line-height:1.4; text-align:left; padding:10px; background:var(--bg); border:1px solid var(--border); border-radius:6px;"><b style="color:var(--btnBg);">🎮 SOS Call Center:</b> Clique ou Pressione espaço para pular! Corra at\xE9 a casa do cliente. A cada n\xEDvel a velocidade aumenta, os dias e noites passam, e surgem novos obst\xE1culos (Fibras Rompidas ⚡, Buracos 🕳️ e Pedras 🌵). N\xE3o deixe a net cair!<br><br><b style="color:#ef4444;">👻 Regras Ghostbu:</b> Caso o cliente não responda (Ghosting), aguarde o tempo regulamentar estipulado pela operação, envie a mensagem de alerta de inatividade, e finalize com a etiqueta "Inatividade Chat" <b>sem</b> acionar o reparo externo. <br> O jogo Ghostbu (aba acima) \xE9 um puzzle l\xF3gico: Cada \xE1rea colorida, linha e coluna deve ter exatamente UM fantasma.</div></div><div id="content-ai" class="content-panel" style="display:none;"><input type="text" id="groq-key" placeholder="API Key Groq (gsk_...)" style="margin-bottom:8px;"><textarea id="groq-chat" rows="6" placeholder="Cole o histórico do chat bruto aqui..."></textarea><button type="button" id="groq-btn" class="ia-btn">GERAR RELATO TÉCNICO</button><div id="groq-res-box" style="display:none;margin-top:8px;"><span style="font-size:10px;color:var(--headTxt);">Resultado:</span><textarea id="groq-out" rows="6" readonly></textarea><div style="display:flex;gap:4px;"><button type="button" id="groq-copy" class="util-btn">COPIAR</button><button type="button" id="groq-use" class="util-btn" style="background:var(--btnBg)!important;color:#fff!important;">USAR NO REGISTRO</button></div></div></div><div id="content-vis" class="content-panel" style="display:none;"><span style="font-size:10px;color:var(--headTxt);">Tema:</span><select id="m-sel-thm" class="cfg-sel"><option value="black_red">Preto/Vermelho</option><option value="light_basic">Claro Básico</option><option value="dark_basic">Escuro Básico</option><option value="white_blue">Branco/Azul</option><option value="purple_black">Roxo/Preto</option><option value="green_yellow">Verde/Amarelo</option><option value="black_blue">Preto/Azul</option><option value="black_yellow_rays">Preto/Amarelo⚡</option><option value="orange_5g">Laranja 5G</option><option value="custom">ARGB Custom</option></select><span style="font-size:10px;color:var(--headTxt);">Cor da Fonte:</span><select id="m-sel-tclr" class="cfg-sel"><option value="#f1f5f9">Branca / Clara</option><option value="#0f172a">Preta / Escura</option></select><span style="font-size:10px;color:var(--headTxt);">Ícone do Botão:</span><select id="m-sel-icn" class="cfg-sel"><option value="sol">Sol ☀️</option><option value="lua">Lua 🌙</option><option value="mar">Mar 🌊</option><option value="estrelas">Estrelas ✨</option><option value="nuvem">Nuvem ☁️</option><option value="akatsuki">Nuvem Akatsuki ☁️</option></select><span style="font-size:10px;color:var(--headTxt);">Fonte:</span><select id="m-sel-fnt" class="cfg-sel" style="margin-bottom:8px!important;"><option value="cyber">Cyber</option><option value="old">Retro</option><option value="common">Comum</option><option value="signature">Assinatura</option><option value="cloister">Cloister Black (Gótica)</option></select><div id="m-custom-colors" style="display:none;gap:6px;align-items:center;background:var(--inBg);padding:6px;border:1px solid var(--inBdr);border-radius:4px;"><span style="font-size:9px;">Fundo:</span><input type="color" id="m-clr-bg" value="${savedBg}" style="width:30px;height:20px;padding:0;margin:0;cursor:pointer;"><span style="font-size:9px;">Borda:</span><input type="color" id="m-clr-bdr" value="${savedBdr}" style="width:30px;height:20px;padding:0;margin:0;cursor:pointer;"></div></div></div>';d.body.appendChild(p);applyLiveStyle(savedThm,savedIcn,savedFnt,savedTxtClr,savedBg,savedBdr);var stThm=d.getElementById('m-sel-thm'),stIcn=d.getElementById('m-sel-icn'),stFnt=d.getElementById('m-sel-fnt'),stTClr=d.getElementById('m-sel-tclr'),cColors=d.getElementById('m-custom-colors'),cBgEl=d.getElementById('m-clr-bg'),cBdrEl=d.getElementById('m-clr-bdr');if(savedThm==='custom'&&cColors)cColors.style.display='flex';if(stTClr)stTClr.value=(savedTxtClr==='#0f172a'?'#0f172a':'#f1f5f9');if(stThm){stThm.onchange=function(){cColors.style.display=this.value==='custom'?'flex':'none';applyLiveStyle(this.value,stIcn.value,stFnt.value,stTClr.value,cBgEl.value,cBdrEl.value);};}if(stIcn){stIcn.onchange=function(){applyLiveStyle(stThm.value,this.value,stFnt.value,stTClr.value,cBgEl.value,cBdrEl.value);};}if(stFnt){stFnt.onchange=function(){applyLiveStyle(stThm.value,stIcn.value,this.value,stTClr.value,cBgEl.value,cBdrEl.value);};}if(stTClr){stTClr.onchange=function(){applyLiveStyle(stThm.value,stIcn.value,stFnt.value,this.value,cBgEl.value,cBdrEl.value);};}if(cBgEl){cBgEl.oninput=function(){applyLiveStyle('custom',stIcn.value,stFnt.value,stTClr.value,this.value,cBdrEl.value);};}if(cBdrEl){cBdrEl.oninput=function(){applyLiveStyle('custom',stIcn.value,stFnt.value,stTClr.value,cBgEl.value,this.value);};}function switchNav(id,title){var navs=['main','net','gb','game','ai','vis'];for(var i=0;i<navs.length;i++){var k=navs[i];d.getElementById('content-'+k).style.display=id===k?'block':'none';d.getElementById('side-'+(k==='main'?'reg':k)).classList.toggle('active',id===k);}d.getElementById('m-title-text').innerText=title;if(id==='gb'&&levelData)renderBoard();if(id==='game'){startRunLoop();}else{stopRunLoop();}}d.getElementById('side-reg').onclick=function(){switchNav('main','Registro de Atendimento');};d.getElementById('side-net').onclick=function(){switchNav('net','Gerência e Equipamento');};d.getElementById('side-gb').onclick=function(){switchNav('gb','Ghostbu Puzzle');};d.getElementById('side-game').onclick=function(){switchNav('game','SOS Call Center');};d.getElementById('side-ai').onclick=function(){switchNav('ai','Assistente IA (Groq)');};d.getElementById('side-vis').onclick=function(){switchNav('vis','Configurações Visuais');};d.getElementById('m-saski').onclick=function(){openIframe('https://saski.brisanet.net.br/','SASKI (F3)');};d.getElementById('m-wookie').onclick=function(){openIframe('https://pastor.brisanet.net.br/#/wookie/home','PASTOR (F4)');};d.getElementById('btn-read-status').onclick=function(){var st=d.querySelector('.status-infor'),lv=d.querySelector('.last-verification');if(st)d.getElementById('dash-st').innerText=st.innerText.trim()||'N/A';if(lv)d.getElementById('dash-lv').innerText=lv.innerText.trim()||'N/A';};d.getElementById('btn-read-sinal').onclick=function(){var btn=d.querySelector('[data-testid="btn-Consultar sinal"]')||d.querySelector('button ion-icon#ion-icon-radio')?.closest('button');if(btn){btn.click();this.innerText="Consultando...";setTimeout(()=>{this.innerText="CONSULTAR SINAL";},2000);}};d.getElementById('btn-check-gerencia').onclick=function(){var btn=null,spans=Array.from(d.querySelectorAll('span, button'));for(var i=0;i<spans.length;i++){if((spans[i].textContent||'').toLowerCase().indexOf('verificar gerência')!==-1){btn=spans[i].closest('button')||spans[i];break;}}if(btn){btn.click();this.innerText="Verificando...";setTimeout(()=>{this.innerText="VERIFICAR GERÊNCIA";},2000);}};function syncCurrentWifi(){var items=Array.from(d.querySelectorAll('.ion-select-item__content, ion-select-item, [data-testid="ion-select-item"]')),vals=items.map(function(el){return(el.textContent||'').trim();}).filter(Boolean);if(vals.length>=2)d.getElementById('lbl-curr-24').innerText='Banda: '+vals[0]+' | Canal: '+vals[1];if(vals.length>=4)d.getElementById('lbl-curr-58').innerText='Banda: '+vals[2]+' | Canal: '+vals[3];}d.getElementById('btn-sync-current-wifi').onclick=syncCurrentWifi;d.getElementById('btn-save-wifi').onclick=async function(){var btn=this,orig=btn.innerText;btn.disabled=true;btn.innerText='1/3 CLICANDO EM EDITAR...';var sleep=function(ms){return new Promise(function(r){setTimeout(r,ms);});};var isVis=function(el){if(!el)return false;var st=window.getComputedStyle(el);return st.display!=='none'&&st.visibility!=='hidden'&&el.offsetWidth>0;};var clickElement=function(el){if(!el)return;try{el.scrollIntoView({behavior:'instant',block:'center'});}catch(e){}var o={bubbles:true,cancelable:true,view:window};el.dispatchEvent(new MouseEvent('mousedown',o));el.dispatchEvent(new MouseEvent('mouseup',o));el.click();};var editBtn=null,allSpans=Array.from(d.querySelectorAll('span, button, div'));for(var i=0;i<allSpans.length;i++){var t=(allSpans[i].textContent||'').trim().toLowerCase();if(t==='editar'&&isVis(allSpans[i])){editBtn=allSpans[i].closest('button')||allSpans[i];break;}}if(editBtn){clickElement(editBtn);await sleep(800);}btn.innerText='2/3 ALTERANDO CONFIGURAÇÕES...';async function selectOptionInIonSelect(selectContainer,targetValue){if(!selectContainer||!targetValue)return;var closeBtn=selectContainer.querySelector('[data-testid="ion-icon-close"]')||selectContainer.querySelector('#ion-icon-close')||selectContainer.querySelector('svg#ion-icon-close');if(closeBtn){clickElement(closeBtn.closest('div')||closeBtn);await sleep(300);}var inputOrTrigger=selectContainer.querySelector('input')||selectContainer.querySelector('.ion-select-container')||selectContainer;clickElement(inputOrTrigger);await sleep(500);var options=Array.from(d.querySelectorAll('.cdk-overlay-pane li, .cdk-overlay-container [role="option"], ion-select-popover ion-item, .ion-select-item, [class*="select-option"], [class*="option-item"]')).filter(isVis);var match=options.find(function(el){return(el.textContent||'').trim().toLowerCase()===targetValue.toLowerCase();})||options.find(function(el){return(el.textContent||'').trim().toLowerCase().indexOf(targetValue.toLowerCase())!==-1;});if(match){clickElement(match);await sleep(400);}else{var backdrop=d.querySelector('.cdk-overlay-backdrop');if(backdrop)clickElement(backdrop);}await sleep(300);}var selects=Array.from(d.querySelectorAll('.ion-select, [data-testid="ion-select"]')).filter(isVis);var v24b=d.getElementById('w-24-b').value,v24c=d.getElementById('w-24-c').value,v58b=d.getElementById('w-58-b').value,v58c=d.getElementById('w-58-c').value;if(selects.length>=2){if(v24b&&selects[0])await selectOptionInIonSelect(selects[0],v24b);if(v24c&&selects[1])await selectOptionInIonSelect(selects[1],v24c);}if(selects.length>=4){if(v58b&&selects[2])await selectOptionInIonSelect(selects[2],v58b);if(v58c&&selects[3])await selectOptionInIonSelect(selects[3],v58c);}await sleep(600);btn.innerText='3/3 SALVANDO...';var saveBtn=null,spansSave=Array.from(d.querySelectorAll('span, button'));for(var k=0;k<spansSave.length;k++){var txtS=(spansSave[k].textContent||'').trim().toLowerCase();if(txtS==='salvar'&&isVis(spansSave[k])){saveBtn=spansSave[k].closest('button')||spansSave[k];break;}}if(saveBtn){clickElement(saveBtn);btn.innerText='SALVO COM SUCESSO!';}else{btn.innerText='CONCLUÍDO!';}setTimeout(function(){syncCurrentWifi();btn.innerText=orig;btn.disabled=false;},2500);};var COLORS=['#1e3a5f','#3b1f50','#144a3e','#4a3b14','#4a1420','#2c3e50','#4338ca','#1e40af','#065f46','#854d0e','#991b1b','#581c87'];function lcg(s){return function(){s=(Math.imul(s,1664525)+1013904223)>>>0;return s/4294967296;};}var diffModes={facil:{size:5,maxG:4,salt:1000},medio:{size:7,maxG:6,salt:3000},dificil:{size:8,maxG:8,salt:5000},expert:{size:9,maxG:999,salt:7000}};var curDiff=ls.getItem('ghostbu_cur_diff')||'facil';function getMaxLvl(m){return parseInt(ls.getItem('ghostbu_prog_'+m)||'1',10);}function setMaxLvl(m,l){ls.setItem('ghostbu_prog_'+m,l);}var curLevel=getMaxLvl(curDiff),boardState=[],levelData=null,autoX=true,curLives=3,isDragging=false,lastTapTime=0,lastTapPos="";function renderLives(){var h="";for(var i=0;i<3;i++)h+=i<curLives?'❤️':'🖤';d.getElementById('gb-lives').innerHTML=h;}function generateLevel(lvl,mK){var conf=diffModes[mK]||diffModes.facil,prng=lcg((lvl*7919+conf.salt)>>>0),size=conf.size;var queens=[];for(var tries=0;tries<2000;tries++){queens=[];var cols=[...Array(size).keys()];for(var r=0;r<size;r++){var validCols=cols.filter(function(c){for(var pr=0;pr<r;pr++){var pc=queens[pr];if(Math.abs(pr-r)<=1&&Math.abs(pc-c)<=1)return false;}return true;});if(validCols.length===0)break;var chosen=validCols[Math.floor(prng()*validCols.length)];queens.push(chosen);cols=cols.filter(function(c){return c!==chosen;});}if(queens.length===size)break;}if(queens.length!==size){queens=[];for(var i=0;i<size;i++)queens.push((i*2+1)%size);}var regions=[...Array(size)].map(function(){return Array(size).fill(-1);});queens.forEach(function(c,r){regions[r][c]=r;});var unassigned=size*size-size;while(unassigned>0){var changed=false;for(var r=0;r<size;r++){for(var c=0;c<size;c++){if(regions[r][c]===-1){var neighbors=[];if(r>0&&regions[r-1][c]!==-1)neighbors.push(regions[r-1][c]);if(r<size-1&&regions[r+1][c]!==-1)neighbors.push(regions[r+1][c]);if(c>0&&regions[r][c-1]!==-1)neighbors.push(regions[r][c-1]);if(c<size-1&&regions[r][c+1]!==-1)neighbors.push(regions[r][c+1]);if(neighbors.length>0){var reg=neighbors[Math.floor(prng()*neighbors.length)];var regCount=regions.flat().filter(function(x){return x===reg;}).length;if(regCount<conf.maxG||unassigned<size*1.5){regions[r][c]=reg;unassigned--;changed=true;}}}}}if(!changed){for(var r=0;r<size;r++){for(var c=0;c<size;c++){if(regions[r][c]===-1){var nb=[[-1,0],[1,0],[0,-1],[0,1]].map(function(dr){return[r+dr[0],c+dr[1]];}).filter(function(pt){return pt[0]>=0&&pt[0]<size&&pt[1]>=0&&pt[1]<size&&regions[pt[0]][pt[1]]!==-1;});if(nb.length>0){regions[r][c]=regions[nb[0][0]][nb[0][1]];unassigned--;}}}}}}return{size:size,regions:regions,solution:queens};}var toastEl=d.getElementById('gb-toast');function showToast(msg){toastEl.innerText=msg;toastEl.style.display='block';setTimeout(function(){toastEl.style.display='none';},2000);}function updateNavControls(){var maxLvl=getMaxLvl(curDiff);d.getElementById('gb-lvl-title').innerText='Nível '+curLevel+' / 300';d.getElementById('gb-max-unlocked').innerText='Desbloqueado: Nível '+maxLvl;d.getElementById('gb-prev').disabled=(curLevel<=1);d.getElementById('gb-next').disabled=(curLevel>=maxLvl||curLevel>=300);}function loadLevel(lvl,mK){curLevel=lvl;curDiff=mK;ls.setItem('ghostbu_cur_diff',curDiff);levelData=generateLevel(lvl,mK);curLives=3;renderLives();d.getElementById('gb-sel-diff').value=mK;updateNavControls();boardState=[...Array(levelData.size)].map(function(){return Array(levelData.size).fill(0);});renderBoard();}function renderBoard(){var bEl=d.getElementById('ghostbu-board');if(!bEl||!levelData)return;bEl.innerHTML='';var N=levelData.size;bEl.style.gridTemplateColumns='repeat('+N+', 1fr)';var boardDim=Math.min(270, d.getElementById('content-gb').clientWidth-20);bEl.style.width=boardDim+'px';bEl.style.height=boardDim+'px';var cellPixel=Math.floor(boardDim/N)-4;for(var r=0;r<N;r++){for(var c=0;c<N;c++){var cell=d.createElement('div');cell.className='gb-cell';cell.style.width=cellPixel+'px';cell.style.height=cellPixel+'px';cell.style.backgroundColor=COLORS[levelData.regions[r][c]%COLORS.length];cell.dataset.r=r;cell.dataset.c=c;var val=boardState[r][c];if(val===1){cell.innerHTML='👻';cell.classList.add('has-ghost');}else if(val===2){cell.innerHTML='✕';cell.classList.add('has-x');}cell.onmousedown=function(e){if(e.button===0){isDragging=true;handleCellTap(parseInt(this.dataset.r),parseInt(this.dataset.c));}};cell.onmouseenter=function(){if(isDragging){var r=parseInt(this.dataset.r),c=parseInt(this.dataset.c);if(boardState[r][c]===0){boardState[r][c]=2;renderBoard();}}};cell.oncontextmenu=function(e){e.preventDefault();var r=parseInt(this.dataset.r),c=parseInt(this.dataset.c);boardState[r][c]=boardState[r][c]===2?0:2;renderBoard();};bEl.appendChild(cell);}}validateRules();}d.addEventListener('mouseup',function(){isDragging=false;});function handleCellTap(r,c){var now=Date.now(),pos=r+','+c;if(now-lastTapTime<350&&lastTapPos===pos){doubleTapCell(r,c);lastTapTime=0;lastTapPos="";}else{lastTapTime=now;lastTapPos=pos;setTimeout(function(){if(lastTapPos===pos){singleTapCell(r,c);lastTapPos="";}},360);}}function singleTapCell(r,c){if(boardState[r][c]===0)boardState[r][c]=2;else if(boardState[r][c]===2)boardState[r][c]=0;renderBoard();}function doubleTapCell(r,c){if(boardState[r][c]===1){boardState[r][c]=0;renderBoard();return;}if(levelData.solution[r]===c){boardState[r][c]=1;if(autoX)applyAutoX(r,c);renderBoard();checkWinCondition();}else{curLives--;renderLives();showToast('ERROU! -1 ❤️');var target=d.querySelector('.gb-cell[data-r="'+r+'"][data-c="'+c+'"]');if(target){target.classList.add('invalid');setTimeout(function(){target.classList.remove('invalid');},600);}if(curLives<=0){setTimeout(function(){showToast('FIM DE JOGO! REINICIANDO...');boardState=[...Array(levelData.size)].map(function(){return Array(levelData.size).fill(0);});curLives=3;renderLives();renderBoard();},800);}}}function applyAutoX(r,c){var N=levelData.size;for(var dr=-1;dr<=1;dr++){for(var dc=-1;dc<=1;dc++){if(dr===0&&dc===0)continue;var nr=r+dr,nc=c+dc;if(nr>=0&&nr<N&&nc>=0&&nc<N){if(boardState[nr][nc]===0)boardState[nr][nc]=2;}}}}function validateRules(){var N=levelData.size;var cells=d.querySelectorAll('.gb-cell');cells.forEach(function(el){el.classList.remove('invalid');});var ghostPositions=[];for(var r=0;r<N;r++){for(var c=0;c<N;c++){if(boardState[r][c]===1)ghostPositions.push({r:r,c:c,reg:levelData.regions[r][c]});}}var invalidSet=new Set();for(var i=0;i<ghostPositions.length;i++){for(var j=i+1;j<ghostPositions.length;j++){var g1=ghostPositions[i],g2=ghostPositions[j];var sameRow=g1.r===g2.r,sameCol=g1.c===g2.c,sameReg=g1.reg===g2.reg,touches=Math.abs(g1.r-g2.r)<=1&&Math.abs(g1.c-g2.c)<=1;if(sameRow||sameCol||sameReg||touches){invalidSet.add(g1.r+','+g1.c);invalidSet.add(g2.r+','+g2.c);}}}invalidSet.forEach(function(pos){var coords=pos.split(',');var target=d.querySelector('.gb-cell[data-r="'+coords[0]+'"][data-c="'+coords[1]+'"]');if(target)target.classList.add('invalid');});}function checkWinCondition(){var N=levelData.size;var ghosts=[];for(var r=0;r<N;r++){for(var c=0;c<N;c++){if(boardState[r][c]===1)ghosts.push({r:r,c:c,reg:levelData.regions[r][c]});}}if(ghosts.length!==N)return;var rows=new Set(),cols=new Set(),regs=new Set();for(var i=0;i<ghosts.length;i++){var g1=ghosts[i];rows.add(g1.r);cols.add(g1.c);regs.add(g1.reg);for(var j=i+1;j<ghosts.length;j++){var g2=ghosts[j];if(Math.abs(g1.r-g2.r)<=1&&Math.abs(g1.c-g2.c)<=1)return;}}if(rows.size===N&&cols.size===N&&regs.size===N){showToast('NÍVEL CONCLUÍDO! PRÓXIMO LIBERADO!');var maxLvl=getMaxLvl(curDiff);if(curLevel>=maxLvl&&curLevel<300){maxLvl=curLevel+1;setMaxLvl(curDiff,maxLvl);}updateNavControls();setTimeout(function(){if(curLevel<300)loadLevel(curLevel+1,curDiff);else showToast('PARABÉNS! ZEROU TODAS AS 300 FASES DESTA DIFICULDADE!');},1200);}}d.getElementById('gb-sel-diff').onchange=function(){loadLevel(getMaxLvl(this.value),this.value);};d.getElementById('gb-prev').onclick=function(){if(curLevel>1)loadLevel(curLevel-1,curDiff);};d.getElementById('gb-next').onclick=function(){if(curLevel<getMaxLvl(curDiff)&&curLevel<300)loadLevel(curLevel+1,curDiff);};d.getElementById('gb-clear').onclick=function(){boardState=[...Array(levelData.size)].map(function(){return Array(levelData.size).fill(0);});curLives=3;renderLives();renderBoard();};d.getElementById('gb-autox').onclick=function(){autoX=!autoX;this.innerText=autoX?'AUTO-X: ON':'AUTO-X: OFF';this.style.color=autoX?'#4ade80':'#f87171';};loadLevel(curLevel,curDiff);
 
     // ==========================================
-    // LÓGICA DO JOGO (INTERNET REPAIR RUNNER)
+    // NOVO JOGO: SOS CALL CENTER RUNNER
     // ==========================================
-    const cvs = d.getElementById('gameCanvas');
-    const ctx = cvs.getContext('2d');
-    let loopId = null;
-    let frame = 0;
-    let level = 1;
-    let score = 0;
-    let gameSpeed = 4;
-    let gameOver = false;
-    let gameWin = false;
-    let targetDist = 0;
-    
-    let dino = { x: 30, y: 110, w: 20, h: 20, dy: 0, jumpF: -8.5, gravity: 0.5, grounded: true };
-    let obstacles = [];
-    let house = null;
+    var cvs = d.getElementById('gameCanvas');
+    var ctx = cvs.getContext('2d');
+    var runId = null, frameRun = 0, rLvl = parseInt(ls.getItem('sos_run_lvl')||'1'), rScore = 0, rSpeed = 0;
+    var rTarget = 0, isNight = false, rOver = false, rWin = false;
+    var pY = 120, pDy = 0, pG = true; // Y padrao para boneco 20x20 no chao de 140
+    var rObs = [], rHouse = null;
+    var obTypes = ['⚡', '🕳️', '🌵'];
 
-    function resetGame(nextLevel = false) {
-        if (nextLevel) level++;
-        else level = 1;
+    function initRun(nextLvl = false) {
+        if(nextLvl) rLvl++;
+        if(rLvl>100) rLvl=100;
+        ls.setItem('sos_run_lvl', rLvl);
+        rScore = 0;
+        // Tempo de corrida pretendido: ~1.5 mins = 90 segundos.
+        // O loop roda a 60fps = 5400 frames totais por nivel em media.
+        // Alvo de score (cada frame = 1 score) = 5400
+        rTarget = 5400; 
         
-        score = 0;
-        gameSpeed = 4 + (level * 0.3);
-        targetDist = 300 + (level * 50); 
-        gameOver = false;
-        gameWin = false;
-        obstacles = [];
-        house = null;
-        dino.y = 110;
-        dino.dy = 0;
-        dino.grounded = true;
-        d.getElementById('g-level').innerText = level;
+        // Aumenta a velocidade base para fazer os obstáculos virem mais rápido
+        rSpeed = 5 + (rLvl * 0.15); 
+        
+        // Ciclo dia/noite: A cada 5 niveis muda
+        isNight = Math.floor((rLvl-1) / 5) % 2 !== 0;
+
+        rOver = false; rWin = false; rObs = []; rHouse = null;
+        pY = 120; pDy = 0; pG = true;
+        
+        d.getElementById('g-level').innerText = rLvl;
+        d.getElementById('g-prog').innerText = '0';
     }
 
-    function jump() {
-        if (gameOver || gameWin) { resetGame(gameWin); return; }
-        if (dino.grounded) { dino.dy = dino.jumpF; dino.grounded = false; }
+    function doJump() {
+        if (rOver || rWin) { initRun(rWin); return; }
+        if (pG) { pDy = -10; pG = false; }
     }
 
-    cvs.addEventListener('mousedown', jump);
+    cvs.onmousedown = doJump;
     d.addEventListener('keydown', function(e){
-        if(e.code === 'Space' && d.getElementById('content-game').style.display === 'block') {
-            e.preventDefault(); jump();
+        if(e.code === 'Space' && d.getElementById('content-game').style.display === 'block'){
+            e.preventDefault(); doJump();
         }
     });
 
-    function spawnObstacle() {
-        let type = '🚧'; // Nivel 1
-        if (level > 20 && Math.random() > 0.5) type = '🐕'; // Nivel 21+ cães
-        if (level > 50 && Math.random() > 0.8) type = '🚗'; // Nivel 51+ carros
-        obstacles.push({ x: cvs.width, y: 110, w: 20, h: 20, text: type });
-    }
+    function loopRun() {
+        if (rOver || rWin) return;
+        frameRun++; rScore++;
+        
+        var pct = Math.min(100, Math.floor((rScore / rTarget) * 100));
+        d.getElementById('g-prog').innerText = pct;
 
-    function updateGame() {
-        if (gameOver || gameWin) return;
-        frame++;
-        score++;
-        d.getElementById('g-score').innerText = score;
-
-        // Limpar canvas
-        ctx.fillStyle = '#87CEEB';
-        ctx.fillRect(0, 0, cvs.width, cvs.height);
+        // Fundo (Dia/Noite)
+        ctx.fillStyle = isNight ? '#0b0c10' : '#87CEEB';
+        ctx.fillRect(0,0,cvs.width,cvs.height);
         
         // Chão
-        ctx.fillStyle = '#654321';
-        ctx.fillRect(0, 130, cvs.width, 20);
+        ctx.fillStyle = isNight ? '#1f2833' : '#654321';
+        ctx.fillRect(0,140,cvs.width,10);
 
-        // Física Técnico
-        dino.dy += dino.gravity;
-        dino.y += dino.dy;
-        if (dino.y >= 110) { dino.y = 110; dino.dy = 0; dino.grounded = true; }
-        
+        // Lua/Sol
         ctx.font = "20px Arial";
-        ctx.fillText("🏃", dino.x, dino.y + 18);
+        ctx.fillText(isNight ? "🌙" : "☀️", cvs.width - 40, 30);
 
-        // Verificação de Vitória (Chegar à casa)
-        if (score >= targetDist && !house) {
-            house = { x: cvs.width, y: 90, w: 40, h: 40 };
+        // Fisica Pulo
+        pDy += 0.6; // Gravidade
+        pY += pDy;
+        if(pY >= 120) { pY = 120; pDy = 0; pG = true; }
+        
+        // Tecnico
+        ctx.font = "20px Arial";
+        ctx.fillText("🏃", 30, pY + 18);
+
+        // Vitoria
+        if (rScore >= rTarget && !rHouse) {
+            rHouse = { x: cvs.width, y: 100, w: 40, h: 40 };
         }
 
-        if (house) {
-            house.x -= gameSpeed;
+        if (rHouse) {
+            rHouse.x -= rSpeed;
             ctx.font = "40px Arial";
-            ctx.fillText("🏠", house.x, house.y + 35);
-            if (house.x <= dino.x + dino.w) {
-                gameWin = true;
-                ctx.fillStyle = "rgba(0,0,0,0.7)";
+            ctx.fillText("🏠", rHouse.x, rHouse.y + 35);
+            if (rHouse.x <= 50) {
+                rWin = true;
+                ctx.fillStyle = "rgba(0,0,0,0.8)";
                 ctx.fillRect(0,0,cvs.width,cvs.height);
                 ctx.fillStyle = "white";
-                ctx.font = "20px Arial";
-                ctx.fillText("NET REPARADA! Nível " + level + " ✔️", 40, 70);
-                ctx.font = "14px Arial";
-                ctx.fillText("Clique para o Nível " + (level+1), 90, 100);
+                ctx.font = "16px Arial";
+                ctx.fillText("NET REPARADA! ✔️ (Nível "+rLvl+")", 50, 70);
+                ctx.font = "12px Arial";
+                ctx.fillText("Clique ou Espaço p/ próximo", 90, 100);
             }
         } else {
-            // Gerar Obstáculos
-            if (frame % (Math.max(40, 100 - (level*2))) === 0 && Math.random() > 0.3) { spawnObstacle(); }
-            
-            for (let i = 0; i < obstacles.length; i++) {
-                let obs = obstacles[i];
-                obs.x -= gameSpeed;
-                ctx.font = "20px Arial";
-                ctx.fillText(obs.text, obs.x, obs.y + 18);
+            // Gerar Obstaculos (Frequencia baseada no nivel)
+            var spawnRate = Math.max(30, 90 - rLvl);
+            if (frameRun % spawnRate === 0 && Math.random() > 0.4) {
+                var maxObs = Math.min(3, Math.ceil(rLvl / 30));
+                var oT = obTypes[Math.floor(Math.random() * maxObs)];
+                // Buraco fica no chao (140), outros ficam normais
+                var oy = (oT === '🕳️') ? 125 : 120; 
+                rObs.push({x: cvs.width, y: oy, text: oT});
+            }
 
-                // Colisão (caixas de colisão ajustadas)
-                if (dino.x < obs.x + obs.w - 5 && dino.x + dino.w - 5 > obs.x &&
-                    dino.y < obs.y + obs.h - 5 && dino.y + dino.h - 5 > obs.y) {
-                    gameOver = true;
-                    ctx.fillStyle = "rgba(255,0,0,0.5)";
+            for (var i = 0; i < rObs.length; i++) {
+                var o = rObs[i];
+                o.x -= rSpeed;
+                ctx.font = "20px Arial";
+                ctx.fillText(o.text, o.x, o.y + 18);
+
+                // Colisao (Hitbox ajustada: 30x, pYy, w20, h20)
+                var hw = 15; // Largura do obstaculo
+                if (30 < o.x + hw && 30 + 20 > o.x + 5 && pY < o.y + 15 && pY + 20 > o.y + 5) {
+                    rOver = true;
+                    ctx.fillStyle = "rgba(220,38,38,0.6)";
                     ctx.fillRect(0,0,cvs.width,cvs.height);
                     ctx.fillStyle = "white";
-                    ctx.font = "20px Arial";
-                    ctx.fillText("CRASH! Cliente sem net ❌", 40, 70);
-                    ctx.font = "14px Arial";
-                    ctx.fillText("Clique para tentar de novo", 80, 100);
+                    ctx.font = "16px Arial";
+                    ctx.fillText("CRASH! Cliente sem net ❌", 70, 70);
+                    ctx.font = "12px Arial";
+                    ctx.fillText("Clique para tentar de novo", 100, 100);
                 }
             }
-            // Limpeza arrays
-            obstacles = obstacles.filter(o => o.x > -30);
+            rObs = rObs.filter(function(o){ return o.x > -30; });
         }
+        
+        if(!rOver && !rWin) runId = requestAnimationFrame(loopRun);
     }
 
-    function gameLoop() {
-        updateGame();
-        loopId = requestAnimationFrame(gameLoop);
-    }
-
-    function startGameLoop() { if (!loopId) { resetGame(); gameLoop(); } }
-    function stopGameLoop() { if (loopId) { cancelAnimationFrame(loopId); loopId = null; } }
+    function startRunLoop() { if (!runId) { initRun(); runId = requestAnimationFrame(loopRun); } }
+    function stopRunLoop() { if (runId) { cancelAnimationFrame(runId); runId = null; } }
     // ==========================================
 
-    var gk = localStorage.getItem('groq_api_key');
-    if (gk) d.getElementById('groq-key').value = gk;
 
-    d.getElementById('groq-btn').onclick = async function () {
-        var apiKey = d.getElementById('groq-key').value.trim();
-        var chatText = d.getElementById('groq-chat').value.trim();
-        if (!apiKey) { alert('Insira a chave da Groq!'); return; }
-        if (!chatText) { alert('Cole o chat!'); return; }
-        localStorage.setItem('groq_api_key', apiKey);
-        
-        var btn = this;
-        var oldTxt = btn.innerText;
-        btn.innerText = '⏳ PROCESSANDO...';
-        btn.disabled = true;
-        
-        d.getElementById('groq-res-box').style.display = 'block';
-        d.getElementById('groq-out').value = 'Analisando...';
-        
-        var prompt = 'Você é um sistema automatizado de Documentação Técnica para Call Center de Suporte. Seu único trabalho é ler históricos de chats de atendimento e gerar um RELATO TÉCNICO EM PARÁGRAFO ÚNICO para o histórico do chamado.\n\nRegras absolutas:\n1. ANONIMATO TOTAL: Remova nomes de clientes, atendentes, telefones, e-mails, números de documentos ou CPFs. Refira-se aos envolvidos apenas como "O cliente" e "O suporte".\n2. FOCO TÉCNICO: Narre em terceira pessoa o sintoma técnico relatado, os testes ou diagnósticos feitos e a solução final aplicada.\n3. FORMATO: Escreva em um único parágrafo contínuo, sem tópicos, sem traços (-), sem asteriscos (*) e sem quebras de linha. Responda apenas com o resumo técnico, sem mensagens adicionais ou introduções de IA.';
-        
-        try {
-            var res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-                method: 'POST',
-                headers: { 'Authorization': 'Bearer ' + apiKey, 'Content-Type': 'application/json' },
-                body: JSON.stringify({ model: 'openai/gpt-oss-20b', messages: [{ role: 'system', content: prompt }, { role: 'user', content: 'Gere o relato técnico deste chat:\n\n' + chatText }], temperature: 0.1 })
-            });
-            var data = await res.json();
-            if (data.choices && data.choices[0]) {
-                d.getElementById('groq-out').value = data.choices[0].message.content.trim();
-            } else {
-                d.getElementById('groq-out').value = 'Erro: ' + (data.error ? data.error.message : 'desconhecido');
-            }
-        } catch (e) { d.getElementById('groq-out').value = 'Erro de rede: ' + e.message; }
-        btn.innerText = oldTxt; btn.disabled = false;
-    };
-
-    d.getElementById('groq-copy').onclick = function () {
-        navigator.clipboard.writeText(d.getElementById('groq-out').value);
-        var b = this; var o = b.innerText; b.innerText = 'COPIADO!';
-        setTimeout(function () { b.innerText = o; }, 2000);
-    };
-
-    d.getElementById('groq-use').onclick = function () {
-        var txt = d.getElementById('groq-out').value;
-        setVal(d.getElementById('m-msg'), txt);
-        d.getElementById('tab-main').click();
-    };
-
-    var im = d.createElement('div');
-    im.id = 'm-iframe-modal';
-    im.style.cssText = 'display:none;position:fixed;top:5vh;left:10vw;width:80vw;height:90vh;background:var(--bg);border:2px solid var(--border);border-radius:8px;z-index:2147483647;box-shadow:0 0 30px var(--glow);flex-direction:column;overflow:hidden;';
-    im.innerHTML = '<div style="display:flex;justify-content:space-between;padding:12px;background:var(--inBg);border-bottom:2px solid var(--border);color:var(--headTxt);font-weight:bold;font-size:14px;"><span id="m-iframe-title">MINI PAGE</span><span id="m-iframe-close" style="cursor:pointer;background:#7f1d1d;padding:2px 8px;border-radius:4px;color:#fff;">FECHAR [X]</span></div><iframe id="m-iframe-src" style="flex:1;width:100%;height:100%;border:none;background:#fff;"></iframe>';
-    d.body.appendChild(im);
-    
-    d.getElementById('m-iframe-close').onclick = function () { im.style.display = 'none'; d.getElementById('m-iframe-src').src = ''; };
-    
-    function openIframe(url, t) {
-        d.getElementById('m-iframe-title').innerText = t;
-        d.getElementById('m-iframe-src').src = url;
-        im.style.display = 'flex';
-    }
-    
-    d.getElementById('m-saski').onclick = function () { openIframe('https://saski.brisanet.net.br/', 'SASKI (F3)'); };
-    d.getElementById('m-wookie').onclick = function () { openIframe('https://pastor.brisanet.net.br/#/wookie/home', 'PASTOR (F4)'); };
-    
-    d.addEventListener('keydown', function (e) {
-        if (e.key === 'F3') { e.preventDefault(); openIframe('https://saski.brisanet.net.br/', 'SASKI (F3)'); }
-        if (e.key === 'F4') { e.preventDefault(); openIframe('https://pastor.brisanet.net.br/#/wookie/home', 'PASTOR (F4)'); }
-    });
-
-    function renderOpts() {
-        var q = (d.getElementById('m-sr').value || '').toLowerCase();
-        var tc = d.querySelector('input[name="m-tc"]:checked').value;
-        var sel = d.getElementById('m-sm');
-        sel.innerHTML = '<option value="">-- Selecione o Motivo --</option>';
-        for (var i = 0; i < base.length; i++) {
-            var str = (base[i].titulo + ' ' + base[i].servico + ' ' + base[i].mensagem).toLowerCase();
-            if (tc !== 'all' && str.indexOf(tc) === -1) continue;
-            if (!q || str.indexOf(q) !== -1) sel.innerHTML += '<option value="' + i + '">' + base[i].titulo + '</option>';
-        }
-    }
-    
-    renderOpts();
-    d.getElementById('m-sr').oninput = renderOpts;
-    d.getElementsByName('m-tc').forEach(function (r) {
-        r.onchange = function () {
-            renderOpts();
-            var v = d.getElementById('m-sm').value;
-            if (v !== '') updTag(base[parseInt(v)]);
-        };
-    });
-
-    b.onclick = function () { p.style.display = p.style.display === 'none' ? 'block' : 'none'; };
-    d.getElementById('m-x').onclick = function () { p.style.display = 'none'; };
-    d.getElementsByName('m-ct').forEach(function (r) {
-        r.onchange = function (e) { d.getElementById('m-ter').style.display = e.target.value === 'terceiro' ? 'block' : 'none'; }
-    });
-
-    function updTag(item) {
-        if (!item) return;
-        var ext = d.getElementById('m-ext').checked;
-        var intTag = item.etiqueta || item.titulo;
-        var extTag = item.etiqueta_externo || intTag;
-        var serv = item.servico || "Reparo Físico";
-        var disp = d.getElementById('tag-display');
-        
-        if (ext) {
-            disp.innerHTML = `🏷️ Interna: <b>${intTag}</b><br>🚀 Externa: <b>${extTag} (${serv.toLowerCase()})</b>`;
-        } else {
-            disp.innerHTML = `🏷️ Interna: <b>${intTag}</b><br>🚀 Externa: <i>Não se aplica</i>`;
-        }
-    }
-
-    d.getElementById('m-sm').onchange = function () {
-        var v = this.value;
-        if (v !== '') {
-            var item = base[parseInt(v)];
-            d.getElementById('m-msg').value = item.mensagem || '';
-            d.getElementById('m-ext').checked = item.externo;
-            updTag(item);
-        } else {
-            d.getElementById('m-msg').value = '';
-            d.getElementById('tag-display').innerHTML = '🏷️ Interna: Nenhuma<br>🚀 Externa: Não se aplica';
-            d.getElementById('m-ext').checked = false;
-        }
-    };
-
-    d.getElementById('m-ext').onchange = function () {
-        var v = d.getElementById('m-sm').value;
-        if (v !== '') updTag(base[parseInt(v)]);
-    };
-
-    function normStr(s) {
-        return (s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().replace(/\s+/g, ' ');
-    }
-
-    function setVal(el, val) {
-        if (!el) return;
-        try { el.focus(); } catch (e) {}
-        var proto = el.tagName.toLowerCase() === 'textarea' ? window.HTMLTextAreaElement.prototype : window.HTMLInputElement.prototype;
-        var setter = Object.getOwnPropertyDescriptor(proto, 'value')?.set;
-        if (setter) setter.call(el, val); else el.value = val;
-        el.dispatchEvent(new Event('input', { bubbles: true }));
-        el.dispatchEvent(new Event('change', { bubbles: true }));
-    }
-
-    function processTags(item, cb) {
-        var tag = item ? (item.etiqueta || item.titulo) : '';
-        if (!tag) return cb ? cb() : null;
-        var pb = d.querySelector('nz-tag.editable-tag') || d.querySelector('i.anticon-plus')?.closest('nz-tag') || d.querySelector('.editable-tag');
-        if (pb) pb.click();
-        
-        var att = 0, int1 = setInterval(function () {
-            att++;
-            var mod = d.querySelector('.ant-modal-content');
-            var ts = d.querySelector('#tags') || d.querySelector('nz-select[id="tags"]');
-            if (!ts && mod) {
-                var ss = mod.querySelectorAll('nz-select');
-                ts = ss.length >= 2 ? ss[1] : ss[0];
-            }
-            if (ts || att >= 20) {
-                clearInterval(int1);
-                var tr = ts ? ts.querySelector('.ant-select-selection') : null;
-                if (tr) tr.click();
-                var inp = ts ? ts.querySelector('input') : null;
-                if (inp) setVal(inp, tag);
-                
-                setTimeout(function () {
-                    var panes = d.querySelectorAll('.cdk-overlay-pane');
-                    var activePane = panes[panes.length - 1];
-                    var match = null;
-                    var tg = normStr(tag);
-                    if (activePane) {
-                        var opts = activePane.querySelectorAll('li');
-                        for (var k = 0; k < opts.length; k++) {
-                            if (opts[k].offsetWidth > 0) {
-                                var txt = normStr(opts[k].innerText || opts[k].textContent);
-                                if (txt === tg || txt.indexOf(tg) === 0 || (tg.length >= 3 && txt.indexOf(tg) !== -1)) {
-                                    match = opts[k];
-                                    break;
-                                }
-                            }
-                        }
-                    }
-                    if (match) {
-                        try { match.scrollIntoView({ block: 'nearest' }); } catch (e) {}
-                        match.click();
-                        setTimeout(function () {
-                            var btns = d.querySelectorAll('.ant-modal-content button');
-                            for (var i = 0; i < btns.length; i++) {
-                                if (btns[i].textContent.toLowerCase().indexOf('concluir') !== -1) {
-                                    btns[i].disabled = false;
-                                    btns[i].click();
-                                    break;
-                                }
-                            }
-                            if (cb) setTimeout(cb, 1000);
-                        }, 800);
-                    } else {
-                        var btns = d.querySelectorAll('.ant-modal-content button');
-                        for (var i = 0; i < btns.length; i++) {
-                            if (btns[i].textContent.toLowerCase().indexOf('concluir') !== -1) {
-                                btns[i].disabled = false;
-                                btns[i].click();
-                                break;
-                            }
-                        }
-                        if (cb) setTimeout(cb, 1000);
-                    }
-                }, 1500);
-            }
-        }, 200);
-    }
-
-    async function handleExternalFlow(item) {
-        const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-        console.log("%c[Automação] Iniciando fluxo externo...", "color: #38bdf8; font-weight: bold;");
-
-        function isVisible(el) {
-            if (!el) return false;
-            const style = window.getComputedStyle(el);
-            if (style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0') return false;
-            const rect = el.getBoundingClientRect();
-            return rect.width > 0 && rect.height > 0;
-        }
-
-        function clickReal(el) {
-            if (!el) return;
-            try { el.scrollIntoView({ behavior: 'instant', block: 'center' }); } catch(e){}
-            const opts = { bubbles: true, cancelable: true, view: window };
-            el.dispatchEvent(new MouseEvent('mouseenter', opts));
-            el.dispatchEvent(new MouseEvent('mouseover', opts));
-            el.dispatchEvent(new MouseEvent('mousedown', opts));
-            el.dispatchEvent(new MouseEvent('mouseup', opts));
-            el.click();
-            el.dispatchEvent(new Event('change', opts));
-        }
-
-        function setValInput(el, val) {
-            if (!el) return;
-            try { el.focus(); } catch (e) {}
-            var setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value')?.set;
-            if (setter) setter.call(el, val);
-            else el.value = val;
-            el.dispatchEvent(new Event('input', { bubbles: true }));
-        }
-
-        async function esperar(fn, timeout = 7000) {
-            const start = Date.now();
-            while (Date.now() - start < timeout) {
-                try {
-                    const el = fn();
-                    if (el && isVisible(el)) return el;
-                } catch (e) {}
-                await sleep(150);
-            }
-            return null;
-        }
-
-        function buscarOpcaoDropdown(textoAlvo, estrito = false) {
-            const overlays = Array.from(document.querySelectorAll('.cdk-overlay-pane, .cdk-overlay-container')).filter(isVisible);
-            const container = overlays[overlays.length - 1] || document;
-            const itens = Array.from(container.querySelectorAll('li.ant-select-dropdown-menu-item, li, nz-option-item, [role="option"]')).filter(isVisible);
-            const alvo = textoAlvo.trim().toLowerCase();
-            
-            let match = itens.find(el => (el.innerText || el.textContent || '').trim().toLowerCase() === alvo);
-            if (match) return match;
-            
-            if (!estrito) {
-                match = itens.find(el => (el.innerText || el.textContent || '').trim().toLowerCase().startsWith(alvo));
-                if (match) return match;
-                match = itens.find(el => (el.innerText || el.textContent || '').trim().toLowerCase().includes(alvo));
-            }
-            return match || null;
-        }
-
-        try {
-            var tagToFind = (document.getElementById('m-ext').checked && item.etiqueta_externo) ? item.etiqueta_externo : (item.etiqueta || item.titulo);
-            var servToFind = (item && item.servico) ? item.servico : 'Reparo Físico';
-            
-            document.getElementById('m-ui').style.display = 'none';
-
-            const modalAberto = document.querySelector('app-new-schedule, nz-modal');
-            if (!modalAberto) {
-                console.log("[1] Clicando em Enviar...");
-                const btnEnviar = await esperar(() => {
-                    let b1 = document.querySelector("div#forward, #forward span, #forward, .item.forward");
-                    if(b1) return b1;
-                    let b2 = document.getElementById('forward');
-                    if(b2) return b2;
-                    let spans = Array.from(document.querySelectorAll('span, div, button'));
-                    let s = spans.find(x => {
-                        let txt = (x.textContent||'').trim().toLowerCase();
-                        return (txt === 'enviar' || txt === 'encaminhar') && isVisible(x);
-                    });
-                    return s ? (s.closest('.item.forward') || s) : null;
-                });
-                
-                if(!btnEnviar) throw new Error("Botão Enviar não encontrado.");
-                clickReal(btnEnviar);
-                await sleep(600);
-
-                console.log("[2] Abrindo Setor...");
-                const selectSetor = await esperar(() => document.querySelector("nz-select#sector .ant-select-selection, nz-select#sector"));
-                if (selectSetor) {
-                    clickReal(selectSetor);
-                    await sleep(400);
-                    console.log("[3] Selecionando Suporte Externo...");
-                    const optSetor = await esperar(() => buscarOpcaoDropdown("Suporte Externo"));
-                    if(optSetor) clickReal(optSetor);
-                    await sleep(600);
-                }
-            }
-
-            console.log("[4] Configurando Problema...");
-            const selectProblema = document.querySelector("nz-select#problem");
-            const problemaJaSelecionado = selectProblema && (selectProblema.innerText || '').toLowerCase().includes(tagToFind.toLowerCase());
-            
-            if (!problemaJaSelecionado) {
-                const triggerProblema = await esperar(() => document.querySelector("nz-select#problem .ant-select-selection, nz-select#problem > div, nz-select#problem"));
-                if (triggerProblema) {
-                    clickReal(triggerProblema);
-                    await sleep(500);
-                    
-                    console.log("[5] Selecionando: " + tagToFind);
-                    const optProblema = await esperar(() => 
-                        buscarOpcaoDropdown(tagToFind + " (reparo físico)", true) || 
-                        buscarOpcaoDropdown(tagToFind + " (" + servToFind.toLowerCase() + ")", true) || 
-                        buscarOpcaoDropdown(tagToFind)
-                    );
-                    
-                    if(optProblema) clickReal(optProblema);
-                    await sleep(500);
-                    
-                    const tituloModal = document.querySelector('.ant-modal-title, app-new-schedule h1, app-new-schedule p');
-                    if (tituloModal) clickReal(tituloModal);
-                    await sleep(400);
-                }
-            }
-
-            console.log("[6] Configurando Serviço...");
-            const selectServico = document.querySelector("nz-select#service");
-            const servicoJaSelecionado = selectServico && (selectServico.innerText || '').toLowerCase().includes(servToFind.toLowerCase());
-            
-            if (!servicoJaSelecionado) {
-                const jaAberto = buscarOpcaoDropdown(servToFind, true);
-                if (!jaAberto) {
-                    const triggerServico = await esperar(() => document.querySelector("nz-select#service .ant-select-selection, nz-select#service > div, nz-select#service"));
-                    if (triggerServico) {
-                        clickReal(triggerServico);
-                        await sleep(500);
-                    }
-                }
-                const optServico = await esperar(() => buscarOpcaoDropdown(servToFind, true) || buscarOpcaoDropdown(servToFind, false));
-                if(optServico) clickReal(optServico);
-                await sleep(600);
-            }
-
-            console.log("[7] Clicando em Continuar...");
-            const btnContinuar = await esperar(() => {
-                const botoes = Array.from(document.querySelectorAll("app-schedule-footer button, nz-modal button, ion-button button, button"));
-                return botoes.find(b => {
-                    const txt = (b.innerText || b.textContent || "").trim().toLowerCase();
-                    const isContinuar = txt.includes("continuar");
-                    const isDisabled = b.disabled || b.hasAttribute('disabled') || b.classList.contains("button-disabled");
-                    return isContinuar && !isDisabled && isVisible(b);
-                });
-            });
-            
-            if(btnContinuar) {
-                clickReal(btnContinuar);
-                if (btnContinuar.closest('ion-button')) clickReal(btnContinuar.closest('ion-button'));
-            } else {
-                throw new Error("Botão Continuar não encontrado.");
-            }
-            await sleep(1500);
-
-            console.log("[8] Clicando em Agendar...");
-            const btnAgendar = await esperar(() => {
-                const botoes = Array.from(document.querySelectorAll("app-ray-calendar button, td button, app-ray-data-cell button"));
-                return botoes.find(b => (b.innerText || b.textContent || "").toLowerCase().includes("agendar") && isVisible(b));
-            });
-            
-            if(btnAgendar) clickReal(btnAgendar);
-            await sleep(600);
-
-            console.log("[9] Escolhendo turno 06:00...");
-            const chipHorario = await esperar(() => {
-                const chips = Array.from(document.querySelectorAll("ion-chip, [class*='chip'], button"));
-                return chips.find(el => (el.innerText || el.textContent || "").includes("06:00") && isVisible(el));
-            });
-            
-            if(chipHorario) clickReal(chipHorario);
-            console.log("%c[Automação] Concluída com sucesso!", "color: #22c55e; font-weight: bold;");
-
-        } catch (err) {
-            console.error("%c[Automação] Erro no fluxo externo:", "color: #ef4444; font-weight: bold;", err.message);
-            alert("Erro na automação externa: " + err.message + "\n\nAbra o console (F12) para ver os detalhes.");
-        }
-    }
-
-    function toggleAguardar(shouldBeWait) {
-        var sw = d.querySelector('button.ant-switch') || d.querySelector('nz-switch button');
-        if (sw) {
-            var isChecked = sw.classList.contains('ant-switch-checked');
-            if (shouldBeWait && !isChecked) {
-                sw.click();
-            } else if (!shouldBeWait && isChecked) {
-                sw.click();
-            }
-        }
-    }
-
-    d.getElementById('m-go').onclick = function () {
-        var ct = d.querySelector('input[name="m-ct"]:checked').value;
-        var ter = d.getElementById('m-ter').value;
-        var smIdx = d.getElementById('m-sm').value;
-        var msg = d.getElementById('m-msg').value;
-        var ag = d.getElementById('m-ag').checked;
-        var obs = d.getElementById('m-obs').value;
-        var isExterno = d.getElementById('m-ext').checked;
-        
-        var fMsg = msg;
-        if (ct === 'terceiro' && ter) fMsg = 'Contato com terceiro (' + ter + '): ' + fMsg;
-        if (ag) fMsg += '\n(Aguardando resposta do cliente)';
-        if (obs) fMsg += '\n\nObs: ' + obs;
-        
-        toggleAguardar(ag);
-        
-        var t = d.querySelector('textarea.text-area') || d.querySelector('textarea[placeholder*="mensagem"]');
-        if (t) {
-            setVal(t, fMsg);
-            var item = smIdx !== '' ? base[parseInt(smIdx)] : null;
-            setTimeout(function () {
-                processTags(item, function () {
-                    var sb = d.getElementById('send_button') || d.querySelector('.send-icon')?.closest('button');
-                    if (sb) { sb.disabled = false; sb.click(); }
-                    
-                    setTimeout(function () {
-                        if (isExterno && item) {
-                            handleExternalFlow(item);
-                        } else {
-                            var bs = d.querySelectorAll('button, nz-button, span');
-                            for (var i = 0; i < bs.length; i++) {
-                                if (bs[i].textContent.toLowerCase().indexOf('finalizar') !== -1 && !bs[i].closest('#m-ui')) {
-                                    var fb = bs[i].closest('button') || bs[i];
-                                    fb.click();
-                                    break;
-                                }
-                            }
-                            setTimeout(function () { p.style.display = 'none'; }, 800);
-                        }
-                    }, 1500);
-                });
-            }, 500);
-        } else {
-            alert('Abra a conversa de um chamado para poder registrar.');
-        }
-    };
-})();
+b.onclick=function(){p.style.display=p.style.display==='none'?'flex':'none';};d.getElementById('m-x').onclick=function(){p.style.display='none';};var gk=ls.getItem('groq_api_key');if(gk)d.getElementById('groq-key').value=gk;d.getElementById('groq-btn').onclick=async function(){var apiKey=d.getElementById('groq-key').value.trim(),chatText=d.getElementById('groq-chat').value.trim();if(!apiKey||!chatText)return;ls.setItem('groq_api_key',apiKey);var btn=this,oldTxt=btn.innerText;btn.innerText='⏳ PROCESSANDO IA...';btn.disabled=true;d.getElementById('groq-res-box').style.display='block';d.getElementById('groq-out').value='Analisando...';var prompt='Você é um sistema automatizado de Documentação Técnica para Call Center de Suporte. Seu único trabalho é ler históricos de chats de atendimento e gerar um RELATO TÉCNICO EM PARÁGRAFO ÚNICO para o histórico do chamado.\\n\\nRegras absolutas:\\n1. ANONIMATO TOTAL: Remova nomes de clientes, atendentes, telefones, e-mails, números de documentos ou CPFs. Refira-se aos envolvidos apenas como "O cliente" e "O suporte".\\n2. FOCO TÉCNICO: Narre em terceira pessoa o sintoma técnico relatado, os testes ou diagnósticos feitos e a solução final aplicada.\\n3. FORMATO: Escreva em um único parágrafo contínuo, sem tópicos, sem traços (-), sem asteriscos (*) e sem quebras de linha. Responda apenas com o resumo técnico, sem mensagens adicionais ou introduções de IA.';try{var res=await fetch('https://api.groq.com/openai/v1/chat/completions',{method:'POST',headers:{'Authorization':'Bearer '+apiKey,'Content-Type':'application/json'},body:JSON.stringify({model:'openai/gpt-oss-20b',messages:[{role:'system',content:prompt},{role:'user',content:'Gere o relato técnico deste chat:\\n\\n'+chatText}],temperature:0.1})}),data=await res.json();d.getElementById('groq-out').value=data.choices?.[0]?.message?.content?.trim()||'Erro na resposta';}catch(e){d.getElementById('groq-out').value='Erro de rede: '+e.message;}btn.innerText=oldTxt;btn.disabled=false;};d.getElementById('groq-copy').onclick=function(){navigator.clipboard.writeText(d.getElementById('groq-out').value);var btn=this,o=btn.innerText;btn.innerText='COPIADO!';setTimeout(function(){btn.innerText=o;},2000);};d.getElementById('groq-use').onclick=function(){setVal(d.getElementById('m-msg'),d.getElementById('groq-out').value);d.getElementById('side-reg').click();};function renderOpts(){var q=(d.getElementById('m-sr').value||'').toLowerCase(),tc=d.querySelector('input[name="m-tc"]:checked').value,sel=d.getElementById('m-sm');sel.innerHTML='<option value="">-- Selecione o Motivo --</option>';base.forEach(function(item,i){var str=(item.titulo+' '+item.servico+' '+item.mensagem).toLowerCase();if(tc!=='all'&&str.indexOf(tc)===-1)return;if(!q||str.indexOf(q)!==-1)sel.innerHTML+='<option value="'+i+'">'+item.titulo+'</option>';});}renderOpts();d.getElementById('m-sr').oninput=renderOpts;d.getElementsByName('m-tc').forEach(function(r){r.onchange=function(){renderOpts();var v=d.getElementById('m-sm').value;if(v!=='')updTag(base[parseInt(v)]);};});d.getElementsByName('m-ct').forEach(function(r){r.onchange=function(e){d.getElementById('m-ter').style.display=e.target.value==='terceiro'?'block':'none';};});function updTag(item){if(!item)return;var ext=d.getElementById('m-ext').checked,iTag=item.etiqueta||item.titulo,eTag=item.etiqueta_externo||iTag,srv=item.servico||"Reparo Físico";d.getElementById('tag-display').innerHTML=ext?`🏷️ Interna: <b>${iTag}</b><br>🚀 Externa: <b>${eTag} (${srv.toLowerCase()})</b>`:`🏷️ Interna: <b>${iTag}</b><br>🚀 Externa: <i>Não se aplica</i>`;}d.getElementById('m-sm').onchange=function(){var v=this.value;if(v!==''){var it=base[parseInt(v)];d.getElementById('m-msg').value=it.mensagem||'';d.getElementById('m-ext').checked=it.externo;updTag(it);}else{d.getElementById('m-msg').value='';d.getElementById('tag-display').innerHTML='🏷️ Interna: Nenhuma<br>🚀 Externa: Não se aplica';d.getElementById('m-ext').checked=false;}};d.getElementById('m-ext').onchange=function(){var v=d.getElementById('m-sm').value;if(v!=='')updTag(base[parseInt(v)]);};function normStr(s){return(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().replace(/\s+/g,' ');}function setVal(el,val){if(!el)return;try{el.focus();}catch(e){}var proto=el.tagName.toLowerCase()==='textarea'?window.HTMLTextAreaElement.prototype:window.HTMLInputElement.prototype,setter=Object.getOwnPropertyDescriptor(proto,'value')?.set;if(setter)setter.call(el,val);else el.value=val;el.dispatchEvent(new Event('input',{bubbles:true}));el.dispatchEvent(new Event('change',{bubbles:true}));}function processTags(item,cb){var tag=item?(item.etiqueta||item.titulo):'';if(!tag)return cb?.();var pb=d.querySelector('nz-tag.editable-tag, i.anticon-plus')?.closest('nz-tag')||d.querySelector('.editable-tag');pb?.click();var att=0,int1=setInterval(function(){if(++att>=20||d.querySelector('#tags, nz-select[id="tags"]')){clearInterval(int1);var ts=d.querySelector('#tags, nz-select[id="tags"]')||d.querySelector('.ant-modal-content nz-select');ts?.querySelector('.ant-select-selection')?.click();var inp=ts?.querySelector('input');if(inp)setVal(inp,tag);setTimeout(function(){var panes=d.querySelectorAll('.cdk-overlay-pane'),p=panes[panes.length-1],tg=normStr(tag),match=null;if(p){for(var k=0;k<p.querySelectorAll('li').length;k++){var o=p.querySelectorAll('li')[k];if(o.offsetWidth>0&&normStr(o.innerText||o.textContent).indexOf(tg)!==-1){match=o;break;}}}if(match){try{match.scrollIntoView({block:'nearest'});}catch(e){}match.click();}setTimeout(function(){var btns=Array.from(d.querySelectorAll('.ant-modal-content button')),cBtn=btns.find(function(b){return b.textContent.toLowerCase().indexOf('concluir')!==-1;});if(cBtn){cBtn.disabled=false;cBtn.click();}if(cb)setTimeout(cb,1000);},800);},1500);}},200);}function selOpt(idx,txt,isM,cb,cnt){var c=cnt||d,att=0,intv=setInterval(function(){att++;var ss=Array.from(c.querySelectorAll('nz-select')).filter(function(e){return e.offsetWidth>0;});if(ss[idx]){clearInterval(intv);(ss[idx].querySelector('.ant-select-selection, .ant-select-selection__placeholder')||ss[idx]).click();setTimeout(function(){var inp=ss[idx].querySelector('input');if(inp&&txt)setVal(inp,txt);setTimeout(function(){var panes=d.querySelectorAll('.cdk-overlay-pane'),p=panes[panes.length-1],tg=normStr(txt),m=null;if(p){for(var k=0;k<p.querySelectorAll('li').length;k++){var o=p.querySelectorAll('li')[k];if(o.offsetWidth>0&&normStr(o.textContent).indexOf(tg)!==-1){try{o.scrollIntoView({block:'nearest'});}catch(e){}m=o;break;}}}if(m){m.dispatchEvent(new MouseEvent('mousedown',{bubbles:true,cancelable:true,view:window}));m.click();m.dispatchEvent(new MouseEvent('mouseup',{bubbles:true,cancelable:true,view:window}));if(inp)inp.dispatchEvent(new KeyboardEvent('keydown',{bubbles:true,cancelable:true,key:'Enter',keyCode:13}));}if(isM)d.querySelectorAll('.cdk-overlay-backdrop').forEach(function(b){b.click();});setTimeout(function(){cb?.();},800);},1500);},500);}else if(att>=25){clearInterval(intv);cb?.();}},200);}function clickBtnByText(txt){var tg=normStr(txt),allEls=d.querySelectorAll('button, span, a, div');for(var i=0;i<allEls.length;i++){if(normStr(allEls[i].textContent).indexOf(tg)!==-1&&allEls[i].offsetWidth>0){try{(allEls[i].closest('button')||allEls[i]).click();}catch(e){}break;}}}function handleExternalFlow(item,isAgd){var fw=d.getElementById('forward')||d.querySelector('.item.forward, img.forward')?.closest('div.item')||Array.from(d.querySelectorAll('span, div')).find(function(el){return normStr(el.textContent)==='enviar'&&el.offsetWidth>0;})?.closest('.item.forward');fw?.click();var step=0,tFind=(item&&item.etiqueta_externo)?item.etiqueta_externo:(item.etiqueta||item.titulo),sFind=(item&&item.servico)?item.servico:'Reparo Físico';var steps=[function(n){selOpt(0,'suporte externo',false,n);},function(n){clickBtnByText('encaminhar');setTimeout(n,1500);},function(n){if(isAgd){var sw=d.querySelector('button.ant-switch, nz-switch button');if(sw&&!sw.classList.contains('ant-switch-checked'))sw.click();}n();},function(n){(async function(){var sleep=function(ms){return new Promise(function(r){setTimeout(r,ms);});};var isV=function(el){return el&&window.getComputedStyle(el).display!=='none'&&window.getComputedStyle(el).visibility!=='hidden'&&el.offsetWidth>0;};var clk=function(el){if(!el)return;try{el.scrollIntoView({behavior:'instant',block:'center'});}catch(e){}var o={bubbles:true,cancelable:true,view:window};el.dispatchEvent(new MouseEvent('mousedown',o));el.dispatchEvent(new MouseEvent('mouseup',o));el.click();};var setInp=function(el,val){if(!el)return;try{el.focus();}catch(e){}var s=Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype,'value')?.set;if(s)s.call(el,val);else el.value=val;el.dispatchEvent(new Event('input',{bubbles:true}));};var wait=async function(fn,to=6000){var s=Date.now();while(Date.now()-s<to){try{var el=fn();if(el&&isV(el))return el;}catch(e){}await sleep(150);}return null;};var findOpt=function(txt,st=false){var ols=Array.from(d.querySelectorAll('.cdk-overlay-pane, .cdk-overlay-container')).filter(isV),cnt=ols[ols.length-1]||d,its=Array.from(cnt.querySelectorAll('li.ant-select-dropdown-menu-item, li, nz-option-item, [role="option"]')).filter(isV),al=txt.trim().toLowerCase();return its.find(function(el){return(el.innerText||el.textContent||'').trim().toLowerCase()===al;})||(!st&&(its.find(function(el){return(el.innerText||el.textContent||'').trim().toLowerCase().startsWith(al);})||its.find(function(el){return(el.innerText||el.textContent||'').trim().toLowerCase().indexOf(al)!==-1;})))||null;};try{var sProb=d.querySelector("nz-select#problem");if(!sProb||!(sProb.innerText||'').toLowerCase().includes(tFind.toLowerCase())){var trP=await wait(function(){return d.querySelector("nz-select#problem .ant-select-selection");});if(trP){clk(trP);await sleep(600);var inP=d.querySelector("nz-select#problem input.ant-select-search__field, .cdk-overlay-container input.ant-select-search__field, nz-select#problem input");if(inP){setInp(inP,tFind);await sleep(600);}var oP=await wait(function(){return findOpt(tFind+" ("+sFind.toLowerCase()+")",true)||findOpt(tFind);});if(oP)clk(oP);await sleep(500);clk(d.querySelector('.cdk-overlay-backdrop-showing, .cdk-overlay-transparent-backdrop')||d.querySelector('.ant-modal-title, app-new-schedule h1'));await sleep(400);}}var sSrv=d.querySelector("nz-select#service");if(!sSrv||!(sSrv.innerText||'').toLowerCase().includes(sFind.toLowerCase())){var trS=await wait(function(){return d.querySelector("nz-select#service .ant-select-selection");});if(trS){clk(trS);await sleep(600);var inS=d.querySelector("nz-select#service input.ant-select-search__field, .cdk-overlay-container input.ant-select-search__field, nz-select#service input");if(inS){setInp(inS,sFind);await sleep(600);}var oS=await wait(function(){return findOpt(sFind,true)||findOpt(sFind,false);});if(oS)clk(oS);await sleep(600);}}var btnCont=await wait(function(){return Array.from(d.querySelectorAll("app-schedule-footer button, nz-modal button, ion-button button, button")).find(function(b){return(b.innerText||b.textContent||"").toLowerCase().indexOf("continuar")!==-1&&!b.disabled&&isV(b);});});if(btnCont){clk(btnCont);if(btnCont.closest('ion-button'))clk(btnCont.closest('ion-button'));}await sleep(1500);var btnAg=await wait(function(){return Array.from(d.querySelectorAll("app-ray-calendar button, td button, app-ray-data-cell button")).find(function(b){return(b.innerText||b.textContent||"").toLowerCase().indexOf("agendar")!==-1&&isV(b);});});if(btnAg)clk(btnAg);await sleep(600);var chip=await wait(function(){return Array.from(d.querySelectorAll("ion-chip, [class*='chip'], button, .chip")).find(function(el){return(el.innerText||el.textContent||"").indexOf("06:00")!==-1&&isV(el);});});if(chip)clk(chip);}catch(e){}n();})();},function(n){n();}];function next(){if(step<steps.length)steps[step++](next);}setTimeout(next,1000);}function toggleAguardar(w){var sw=d.querySelector('button.ant-switch, nz-switch button');if(sw){var chk=sw.classList.contains('ant-switch-checked');if((w&&!chk)||(!w&&chk))sw.click();}}d.getElementById('m-go').onclick=function(){var ct=d.querySelector('input[name="m-ct"]:checked').value,ter=d.getElementById('m-ter').value,smIdx=d.getElementById('m-sm').value,ag=d.getElementById('m-ag').checked,obs=d.getElementById('m-obs').value,isExt=d.getElementById('m-ext').checked;var fMsg=d.getElementById('m-msg').value;if(ct==='terceiro'&&ter)fMsg=`Contato com terceiro (${ter}): ${fMsg}`;if(ag)fMsg+='\n(Aguardando resposta do cliente)';if(obs)fMsg+=`\n\nObs: ${obs}`;toggleAguardar(ag);var t=d.querySelector('textarea.text-area, textarea[placeholder*="mensagem"]');if(t){setVal(t,fMsg);var item=smIdx!==''?base[parseInt(smIdx)]:null;setTimeout(function(){processTags(item,function(){var sb=d.getElementById('send_button')||d.querySelector('.send-icon')?.closest('button');if(sb){sb.disabled=false;sb.click();}setTimeout(function(){if(isExt&&item)handleExternalFlow(item,ag);},1500);});},500);}};})();
